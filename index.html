@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional</title>
+<title>Keuangan Operasional v11</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -19,7 +19,7 @@
   <!-- HEADER -->
   <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
     <div>
-      <h1 class="text-xl font-bold text-gray-800">Keuangan Operasional 10.0</h1>
+      <h1 class="text-xl font-bold text-gray-800">Keuangan Operasional</h1>
       <p class="text-xs text-gray-500">Pencatatan omset & setoran pekerja</p>
     </div>
     <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -47,8 +47,8 @@
     {{ toast.message }}
   </div>
 
-  <!-- RINGKASAN DATA -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+  <!-- RINGKASAN DATA (CARD BARU VERSI 11) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
     <div class="bg-white p-4 rounded-xl shadow-sm border">
       <p class="text-xs text-gray-500">Total Omset</p>
       <p class="text-lg font-bold text-gray-800">{{ formatRupiah(summary.totalOmset) }}</p>
@@ -60,6 +60,18 @@
     <div class="bg-white p-4 rounded-xl shadow-sm border">
       <p class="text-xs text-gray-500">Profit Owner</p>
       <p class="text-lg font-bold text-purple-600">{{ formatRupiah(summary.totalOwnerShare) }}</p>
+    </div>
+    <!-- CARD TAMBAHAN 1 -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border">
+      <p class="text-xs text-gray-500">Total Setoran Akhir</p>
+      <p class="text-lg font-bold" :class="summary.totalSetoranAkhirAll >= 0 ? 'text-amber-600' : 'text-red-600'">
+        {{ formatRupiah(summary.totalSetoranAkhirAll) }}
+      </p>
+    </div>
+    <!-- CARD TAMBAHAN 2 -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border bg-emerald-50/30">
+      <p class="text-xs text-emerald-700 font-medium">Profit Perusahaan Periode</p>
+      <p class="text-lg font-bold text-emerald-600">{{ formatRupiah(summary.profitPerusahaanPeriode) }}</p>
     </div>
   </div>
 
@@ -173,7 +185,6 @@
           </div>
           <hr class="my-1">
           
-          <!-- TOTAL SETORAN AKHIR -->
           <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
             <div class="flex items-center gap-1">
@@ -186,7 +197,6 @@
             </div>
           </div>
 
-          <!-- INPUT SETORAN DIBAYAR -->
           <div class="no-export pt-2 border-t space-y-1">
             <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
             <div class="flex gap-1.5">
@@ -196,7 +206,6 @@
               </button>
             </div>
 
-            <!-- TOMBOL BATALKAN PEMBAYARAN KEMBALI KE SEMULA -->
             <button v-if="k.hasPaymentLog" @click="batalPembayaran(k)" class="w-full text-center text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-medium py-1 rounded mt-1">
               ↩️ Batal Pembayaran Last (Kembalikan Ke Semula)
             </button>
@@ -244,7 +253,6 @@
           </div>
           <hr class="my-1">
 
-          <!-- TOTAL SETORAN AKHIR -->
           <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
             <div class="flex items-center gap-1">
@@ -257,7 +265,6 @@
             </div>
           </div>
 
-          <!-- INPUT SETORAN DIBAYAR -->
           <div class="no-export pt-2 border-t space-y-1">
             <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
             <div class="flex gap-1.5">
@@ -267,7 +274,6 @@
               </button>
             </div>
 
-            <!-- TOMBOL BATALKAN PEMBAYARAN KEMBALI KE SEMULA -->
             <button v-if="t.hasPaymentLog" @click="batalPembayaran(t)" class="w-full text-center text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-medium py-1 rounded mt-1">
               ↩️ Batal Pembayaran Last (Kembalikan Ke Semula)
             </button>
@@ -318,6 +324,12 @@
       </table>
     </div>
   </div>
+
+  <!-- FOOTER DENGAN VERSI (v11) -->
+  <footer class="text-center pt-4 border-t text-gray-400 text-[11px] flex justify-between items-center">
+    <span>Aplikasi Keuangan Operasional</span>
+    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v11</span>
+  </footer>
 
   <!-- MODAL: KONEKSI -->
   <div v-if="showConfig" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
@@ -381,7 +393,7 @@ createApp({
 
       transactions: [],
       workers: [],
-      summary: { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0 },
+      summary: { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0, profitPerusahaanPeriode: 0 },
       rekapKorlap: [],
       rekapTeknisi: []
     };
@@ -548,7 +560,7 @@ createApp({
         if (res && res.error) { this.showToast(res.error, 'error'); return; }
         this.transactions = res.transactions || [];
         this.workers = res.workers || [];
-        this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0 };
+        this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0, profitPerusahaanPeriode: 0 };
         this.rekapKorlap = res.rekapKorlap || [];
         this.rekapTeknisi = res.rekapTeknisi || [];
       }).catch(() => {
