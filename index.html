@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --primary:#0f766e;
+    --bg:#f4f6f7;
+    --card:#ffffff;
+    --plus:#16a34a;
+    --minus:#dc2626;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);margin:0;color:var(--text);}
+  header.topbar{background:var(--primary);color:#fff;padding:16px 20px;}
+  header.topbar h1{margin:0;font-size:18px;}
+  header.topbar p{margin:2px 0 0;font-size:12px;opacity:.9;}
+  .container{max-width:1150px;margin:0 auto;padding:16px;}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab-btn{padding:8px 16px;border:none;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;color:var(--muted);}
+  .tab-btn.active{background:var(--primary);color:#fff;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  .card h3{margin-top:0;font-size:14px;}
+  .grid-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+  .summary-item{padding:14px;border-radius:10px;background:#f9fafb;border:1px solid var(--border);}
+  .summary-item .label{font-size:12px;color:var(--muted);}
+  .summary-item .value{font-size:20px;font-weight:700;margin-top:4px;}
+  .value.plus{color:var(--plus);} .value.minus{color:var(--minus);}
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  label{font-size:12px;color:var(--muted);}
+  input,select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;}
+  button{cursor:pointer;}
+  .btn{padding:8px 14px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-weight:600;font-size:13px;}
+  .btn.secondary{background:#e5e7eb;color:var(--text);}
+  .btn.danger{background:var(--minus);color:#fff;}
+  .btn.small{padding:5px 9px;font-size:12px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;}
+  th{background:#f9fafb;font-size:11px;text-transform:uppercase;color:var(--muted);}
+  tr:hover{background:#fafafa;}
+  .badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
+  .badge.lunas{background:#dcfce7;color:#166534;}
+  .badge.belum{background:#fee2e2;color:#991b1b;}
+  .badge.korlap{background:#e0e7ff;color:#3730a3;}
+  .badge.teknisi{background:#fef3c7;color:#92400e;}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:50;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:420px;max-height:90vh;overflow:auto;}
+  .modal h3{margin-top:0;}
+  .form-grid{display:flex;flex-direction:column;gap:10px;}
+  .actions-row{display:flex;gap:6px;flex-wrap:wrap;}
+  #receiptWrap{position:fixed;left:-9999px;top:0;}
+  .receipt{width:380px;background:#fff;padding:20px;font-family:Arial,sans-serif;border:1px solid #ddd;}
+  .receipt h2{margin:0;font-size:16px;color:#0f766e;}
+  .receipt p{margin:2px 0;font-size:12px;color:#444;}
+  .receipt hr{border:none;border-top:1px dashed #ccc;margin:10px 0;}
+  .receipt table{width:100%;font-size:12px;}
+  .receipt td{padding:4px 0;border:none;}
+  .receipt .total{font-size:15px;font-weight:700;color:#0f766e;}
+  .empty{text-align:center;color:var(--muted);padding:20px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:100;}
+  .hint{font-size:11px;color:var(--muted);margin-top:-4px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Kurasin Toren Indonesia</h1>
+  <p>Jl Amanah 1 No 54, Pd Petir - Depok · 082213807278</p>
+  <p>Payroll Komisi Owner &amp; Teknisi/Korlap</p>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">Ringkasan</button>
+    <button class="tab-btn" data-tab="transaksi">Transaksi</button>
+    <button class="tab-btn" data-tab="karyawan">Karyawan</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="tab-content">
+    <div class="card">
+      <div class="filter-row">
+        <div class="field"><label>Dari Tanggal</label><input type="date" id="filterStart"></div>
+        <div class="field"><label>Sampai Tanggal</label><input type="date" id="filterEnd"></div>
+        <div class="field"><label>Nama</label><select id="filterNama"><option value="">Semua Nama</option></select></div>
+        <button class="btn" onclick="loadSummary()">Terapkan Filter</button>
+        <button class="btn secondary" onclick="resetFilter()">Semua Data</button>
+      </div>
+      <div class="grid-summary" id="summaryGrid">
+        <div class="empty">Memuat ringkasan...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Rincian Setoran per Teknisi/Korlap</h3>
+      <div style="overflow-x:auto;">
+        <table id="breakdownTable">
+          <thead>
+            <tr>
+              <th>Nama</th><th>Status</th><th>Omset</th><th>Setoran Kotor</th>
+              <th>Komisi Korlap</th><th>Diskon</th><th>Transfer</th>
+              <th>Jml Setoran (Periode)</th><th>Saldo Berjalan</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="9" class="empty">Memuat data...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSAKSI -->
+  <div id="tab-transaksi" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="actions-row" style="margin-bottom:12px;">
+        <button class="btn" onclick="openTransaksiModal()">+ Input Transaksi</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="transaksiTable">
+          <thead>
+            <tr>
+              <th>Tanggal</th><th>Nama</th><th>Status</th><th>Omset</th><th>%</th>
+              <th>Setoran</th><th>Komisi Korlap</th><th>Diskon</th><th>Transfer</th>
+              <th>Jml Setoran</th><th>Setoran Sblmnya</th><th>Total Setoran</th><th>Status</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="14" class="empty">Memuat data...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KARYAWAN -->
+  <div id="tab-karyawan" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="form-grid" style="max-width:340px;margin-bottom:16px;">
+        <div class="field"><label>Nama</label><input id="karyawanNama" placeholder="Nama karyawan"></div>
+        <div class="field">
+          <label>Status</label>
+          <select id="karyawanStatus">
+            <option value="Teknisi">Teknisi (setor 55%)</option>
+            <option value="Korlap">Korlap (setor 50%)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Saldo Awal (opsional)</label>
+          <input type="number" id="karyawanSaldoAwal" value="0">
+          <div class="hint">Isi jika sebelum pakai app ini sudah ada hutang/piutang. Positif = dia masih hutang ke owner, negatif = owner hutang ke dia.</div>
+        </div>
+        <button class="btn" onclick="addKaryawanFn()">+ Tambah Karyawan</button>
+      </div>
+      <table>
+        <thead><tr><th>Nama</th><th>Status</th><th>Persentase</th><th>Saldo Awal</th><th>Aksi</th></tr></thead>
+        <tbody id="karyawanBody"><tr><td colspan="5" class="empty">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TRANSAKSI -->
+<div class="modal-bg" id="modalTransaksi">
+  <div class="modal">
+    <h3 id="modalTitle">Input Transaksi</h3>
+    <input type="hidden" id="txId">
+    <div class="form-grid">
+      <div class="field">
+        <label>Karyawan</label>
+        <select id="txKaryawan" onchange="hitungPreview()"></select>
+      </div>
+      <div class="field"><label>Tanggal</label><input type="date" id="txTanggal"></div>
+      <div class="field"><label>Omset</label><input type="number" id="txOmset" oninput="hitungPreview()"></div>
+      <div class="field"><label>Diskon (jika ada)</label><input type="number" id="txDiskon" value="0" oninput="hitungPreview()"></div>
+      <div class="field"><label>Transfer (jika ada)</label><input type="number" id="txTransfer" value="0" oninput="hitungPreview()"></div>
+      <div class="card" style="background:#f9fafb;padding:10px;font-size:13px;">
+        <div>Setoran (<span id="pvPersen">-</span>): <b id="pvSetoran">Rp 0</b></div>
+        <div>Komisi Korlap (5% omset teknisi): <b id="pvKomisi">-</b></div>
+        <div>Jumlah Setoran (perkiraan): <b id="pvJumlah">Rp 0</b></div>
+        <div class="hint">Setoran sebelumnya (hutang/piutang lama) dihitung otomatis oleh sistem saat disimpan, tidak perlu diisi manual.</div>
+      </div>
+      <div class="actions-row">
+        <button class="btn" onclick="saveTransaksi()">Simpan</button>
+        <button class="btn secondary" onclick="closeModal('modalTransaksi')">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT (hidden, dipakai untuk print gambar) -->
+<div id="receiptWrap">
+  <div class="receipt" id="receiptContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= KONFIGURASI KONEKSI ================= */
+// Kosongkan jika file ini dijalankan LANGSUNG dari Apps Script (sebagai Index.html) - default, tidak perlu diubah.
+// Jika file ini di-upload ke GitHub Pages / hosting lain, isi dengan URL Web App hasil Deploy Apps Script,
+// contoh: 'https://script.google.com/macros/s/XXXXXXXXXXXX/exec'
+const CONFIG = {
+  API_URL: ''
+};
+
+function callApi(action, params) {
+  return new Promise((resolve, reject) => {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(res => (res && res.ok) ? resolve(res.data) : reject(new Error((res && res.error) || 'Unknown error')))
+        .withFailureHandler(err => reject(err))
+        .apiRouter(action, params || null);
+    } else {
+      if (!CONFIG.API_URL) { reject(new Error('API_URL belum diisi di CONFIG pada Index.html.')); return; }
+      fetch(CONFIG.API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
+        body: JSON.stringify({ action, params: params || null })
+      })
+      .then(r => r.json())
+      .then(res => res.ok ? resolve(res.data) : reject(new Error(res.error)))
+      .catch(reject);
+    }
+  });
+}
+
+let karyawanList = [];
+let currentFilter = null;
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+    document.getElementById('tab-'+btn.dataset.tab).style.display='block';
+    if(btn.dataset.tab==='transaksi') loadTransaksi();
+    if(btn.dataset.tab==='karyawan') loadKaryawan();
+  });
+});
+
+function fmtRp(n){
+  n = Number(n)||0;
+  const sign = n < 0 ? '-' : '';
+  return sign + 'Rp ' + Math.abs(n).toLocaleString('id-ID', {maximumFractionDigits:0});
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  setTimeout(()=>t.style.display='none', 2500);
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function populateFilterNama(){
+  const sel = document.getElementById('filterNama');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Semua Nama</option>' + karyawanList.map(k=>`<option value="${k.id}">${k.nama} (${k.status})</option>`).join('');
+  sel.value = cur;
+}
+function populateKaryawanSelect(){
+  const sel = document.getElementById('txKaryawan');
+  sel.innerHTML = karyawanList.map(k=>`<option value="${k.id}" data-status="${k.status}">${k.nama} (${k.status})</option>`).join('');
+}
+
+/* ===== DASHBOARD ===== */
+function loadSummary(){
+  const start = document.getElementById('filterStart').value;
+  const end = document.getElementById('filterEnd').value;
+  const karyawanId = document.getElementById('filterNama').value;
+  currentFilter = (start || end || karyawanId) ? {
+    start: start || undefined, end: end || undefined, karyawanId: karyawanId || undefined
+  } : null;
+  callApi('getSummary', currentFilter).then(renderSummary).catch(err=>showToast('Error: '+err.message));
+  callApi('getSummaryPerKaryawan', currentFilter).then(renderBreakdown).catch(err=>showToast('Error: '+err.message));
+}
+function resetFilter(){
+  document.getElementById('filterStart').value='';
+  document.getElementById('filterEnd').value='';
+  document.getElementById('filterNama').value='';
+  currentFilter = null;
+  loadSummary();
+}
+function renderSummary(s){
+  const mpClass = s.minusPositif < 0 ? 'minus' : 'plus';
+  const mpLabel = s.minusPositif < 0 ? 'Owner Hutang ke Teknisi/Korlap' : 'Teknisi/Korlap Hutang ke Owner';
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="summary-item"><div class="label">1. Jumlah Omset</div><div class="value">${fmtRp(s.jumlahOmset)}</div></div>
+    <div class="summary-item"><div class="label">2. ${mpLabel}</div><div class="value ${mpClass}">${fmtRp(Math.abs(s.minusPositif))}</div></div>
+    <div class="summary-item"><div class="label">3. Jumlah Sudah Transfer</div><div class="value">${fmtRp(s.jumlahTransfer)}</div></div>
+    <div class="summary-item"><div class="label">4. Profit</div><div class="value ${s.profit<0?'minus':'plus'}">${fmtRp(s.profit)}</div></div>
+  `;
+}
+function renderBreakdown(list){
+  const body = document.querySelector('#breakdownTable tbody');
+  if(!list.length){ body.innerHTML = '<tr><td colspan="9" class="empty">Tidak ada data</td></tr>'; return; }
+  body.innerHTML = list.map(r=>{
+    const saldoClass = r.saldoBerjalan < 0 ? 'minus' : (r.saldoBerjalan > 0 ? 'plus' : '');
+    return `<tr>
+      <td>${r.nama}</td>
+      <td><span class="badge ${r.status==='Korlap'?'korlap':'teknisi'}">${r.status}</span></td>
+      <td>${fmtRp(r.totalOmset)}</td>
+      <td>${fmtRp(r.totalSetoran)}</td>
+      <td>${fmtRp(r.totalKomisi)}</td>
+      <td>${fmtRp(r.totalDiskon)}</td>
+      <td>${fmtRp(r.totalTransfer)}</td>
+      <td><b>${fmtRp(r.totalJumlahSetoran)}</b></td>
+      <td><b class="${saldoClass}">${fmtRp(r.saldoBerjalan)}</b></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ===== KARYAWAN ===== */
+function loadKaryawan(){
+  callApi('getKaryawanList').then(list=>{
+    karyawanList = list;
+    const body = document.getElementById('karyawanBody');
+    if(!list.length){ body.innerHTML='<tr><td colspan="5" class="empty">Belum ada karyawan</td></tr>'; return; }
+    body.innerHTML = list.map(k=>`
+      <tr>
+        <td>${k.nama}</td>
+        <td><span class="badge ${k.status==='Korlap'?'korlap':'teknisi'}">${k.status}</span></td>
+        <td>${(k.persen*100).toFixed(0)}%</td>
+        <td>${fmtRp(k.saldoAwal)}</td>
+        <td><button class="btn danger small" onclick="delKaryawan('${k.id}')">Hapus</button></td>
+      </tr>`).join('');
+    populateKaryawanSelect();
+    populateFilterNama();
+  }).catch(err=>showToast('Error: '+err.message));
+}
+function addKaryawanFn(){
+  const nama = document.getElementById('karyawanNama').value.trim();
+  const status = document.getElementById('karyawanStatus').value;
+  const saldoAwal = document.getElementById('karyawanSaldoAwal').value;
+  if(!nama){ showToast('Nama wajib diisi'); return; }
+  callApi('addKaryawan', {nama, status, saldoAwal}).then(()=>{
+    document.getElementById('karyawanNama').value='';
+    document.getElementById('karyawanSaldoAwal').value=0;
+    showToast('Karyawan ditambahkan');
+    loadKaryawan();
+  }).catch(err=>showToast('Error: '+err.message));
+}
+function delKaryawan(id){
+  if(!confirm('Hapus karyawan ini?')) return;
+  callApi('deleteKaryawan', {id}).then(()=>{ loadKaryawan(); }).catch(err=>showToast('Error: '+err.message));
+}
+
+/* ===== TRANSAKSI ===== */
+function loadTransaksi(){
+  callApi('getTransaksiList', currentFilter).then(renderTransaksi).catch(err=>showToast('Error: '+err.message));
+}
+function renderTransaksi(rows){
+  const body = document.querySelector('#transaksiTable tbody');
+  if(!rows.length){ body.innerHTML='<tr><td colspan="14" class="empty">Belum ada transaksi</td></tr>'; return; }
+  body.innerHTML = rows.map(r=>{
+    const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID');
+    const lunas = r.StatusLunas === 'Lunas';
+    return `<tr>
+      <td>${tgl}</td>
+      <td>${r.Nama}</td>
+      <td><span class="badge ${r.Status==='Korlap'?'korlap':'teknisi'}">${r.Status}</span></td>
+      <td>${fmtRp(r.Omset)}</td>
+      <td>${(r.Persentase*100).toFixed(0)}%</td>
+      <td>${fmtRp(r.Setoran)}</td>
+      <td>${fmtRp(r.KomisiKorlap)}</td>
+      <td>${fmtRp(r.Diskon)}</td>
+      <td>${fmtRp(r.Transfer)}</td>
+      <td><b>${fmtRp(r.JumlahSetoran)}</b></td>
+      <td>${fmtRp(r.SetoranSebelumnya)}</td>
+      <td><b>${fmtRp(r.TotalSetoran)}</b></td>
+      <td><span class="badge ${lunas?'lunas':'belum'}">${r.StatusLunas}</span></td>
+      <td>
+        <div class="actions-row">
+          <button class="btn secondary small" onclick='editTransaksi(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Edit</button>
+          ${!lunas?`<button class="btn small" style="background:#16a34a;color:#fff;" onclick="lunaskan('${r.KaryawanID}')">Lunas</button>`:''}
+          <button class="btn secondary small" onclick='printReceipt(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Print</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function openTransaksiModal(){
+  document.getElementById('modalTitle').textContent='Input Transaksi';
+  document.getElementById('txId').value='';
+  document.getElementById('txTanggal').valueAsDate = new Date();
+  document.getElementById('txOmset').value='';
+  document.getElementById('txDiskon').value=0;
+  document.getElementById('txTransfer').value=0;
+  populateKaryawanSelect();
+  document.getElementById('txKaryawan').disabled=false;
+  hitungPreview();
+  document.getElementById('modalTransaksi').classList.add('show');
+}
+function editTransaksi(r){
+  document.getElementById('modalTitle').textContent='Edit Transaksi';
+  document.getElementById('txId').value=r.ID;
+  populateKaryawanSelect();
+  document.getElementById('txKaryawan').value=r.KaryawanID;
+  document.getElementById('txKaryawan').disabled=true;
+  document.getElementById('txTanggal').value = new Date(r.Tanggal).toISOString().split('T')[0];
+  document.getElementById('txOmset').value=r.Omset;
+  document.getElementById('txDiskon').value=r.Diskon;
+  document.getElementById('txTransfer').value=r.Transfer;
+  hitungPreview();
+  document.getElementById('modalTransaksi').classList.add('show');
+}
+function hitungPreview(){
+  const sel = document.getElementById('txKaryawan');
+  const opt = sel.options[sel.selectedIndex];
+  const status = opt ? opt.dataset.status : 'Teknisi';
+  const persen = status==='Korlap'?0.5:0.55;
+  const omset = Number(document.getElementById('txOmset').value)||0;
+  const diskon = Number(document.getElementById('txDiskon').value)||0;
+  const transfer = Number(document.getElementById('txTransfer').value)||0;
+  const setoran = omset*persen;
+  document.getElementById('pvPersen').textContent=(persen*100)+'%';
+  document.getElementById('pvSetoran').textContent=fmtRp(setoran);
+  document.getElementById('pvKomisi').textContent = status==='Korlap' ? 'dihitung otomatis saat disimpan' : '-';
+  document.getElementById('pvJumlah').textContent=fmtRp(setoran-diskon-transfer);
+}
+function saveTransaksi(){
+  const id = document.getElementById('txId').value;
+  const sel = document.getElementById('txKaryawan');
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt){ showToast('Pilih karyawan dulu'); return; }
+  const payload = {
+    id: id||undefined,
+    karyawanId: sel.value,
+    nama: opt.textContent,
+    status: opt.dataset.status,
+    tanggal: document.getElementById('txTanggal').value,
+    omset: document.getElementById('txOmset').value,
+    diskon: document.getElementById('txDiskon').value,
+    transfer: document.getElementById('txTransfer').value
+  };
+  const fn = id ? 'updateTransaksi' : 'addTransaksi';
+  callApi(fn, payload).then(()=>{
+    closeModal('modalTransaksi');
+    showToast('Transaksi tersimpan');
+    loadTransaksi();
+  }).catch(err=>showToast('Error: '+err.message));
+}
+function lunaskan(karyawanId){
+  if(!confirm('Tandai semua transaksi karyawan ini sebagai lunas?')) return;
+  callApi('tandaiLunas', {karyawanId}).then(()=>{ showToast('Ditandai lunas'); loadTransaksi(); }).catch(err=>showToast('Error: '+err.message));
+}
+
+/* ===== PRINT SEBAGAI GAMBAR ===== */
+function printReceipt(r){
+  const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('receiptContent').innerHTML = `
+    <h2>Kurasin Toren Indonesia</h2>
+    <p>Jl Amanah 1 No 54, Pd Petir - Depok</p>
+    <p>0822-1380-7278</p>
+    <hr>
+    <p><b>Bukti Setoran ${r.Status}</b></p>
+    <table>
+      <tr><td>Nama</td><td>: ${r.Nama}</td></tr>
+      <tr><td>Tanggal</td><td>: ${tgl}</td></tr>
+      <tr><td>Omset</td><td>: ${fmtRp(r.Omset)}</td></tr>
+      <tr><td>Setoran (${(r.Persentase*100).toFixed(0)}%)</td><td>: ${fmtRp(r.Setoran)}</td></tr>
+      ${r.Status==='Korlap'?`<tr><td>Komisi Korlap (5%)</td><td>: -${fmtRp(r.KomisiKorlap)}</td></tr>`:''}
+      <tr><td>Diskon</td><td>: -${fmtRp(r.Diskon)}</td></tr>
+      <tr><td>Transfer</td><td>: -${fmtRp(r.Transfer)}</td></tr>
+      <tr><td>Jumlah Setoran</td><td>: ${fmtRp(r.JumlahSetoran)}</td></tr>
+      <tr><td>Setoran Sebelumnya</td><td>: ${fmtRp(r.SetoranSebelumnya)}</td></tr>
+    </table>
+    <hr>
+    <table><tr><td class="total">TOTAL SETORAN</td><td class="total">${fmtRp(r.TotalSetoran)}</td></tr></table>
+    <p style="margin-top:10px;color:#888;">Status: ${r.StatusLunas}</p>
+  `;
+  const node = document.getElementById('receiptContent');
+  html2canvas(node, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
+    const link = document.createElement('a');
+    link.download = 'Setoran_'+r.Nama+'_'+String(r.Tanggal).replace(/[:.]/g,'-')+'.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+}
+
+/* INIT */
+window.onload = function(){
+  loadSummary();
+  callApi('getKaryawanList').then(list=>{
+    karyawanList=list;
+    populateKaryawanSelect();
+    populateFilterNama();
+  }).catch(err=>showToast('Error: '+err.message));
+};
+</script>
+</body>
+</html>
