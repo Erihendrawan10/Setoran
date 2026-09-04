@@ -166,15 +166,21 @@
           <hr class="my-1">
           <div class="flex justify-between font-bold text-sm">
             <span>Total Setoran Akhir</span>
-            <span :class="k.totalSetoranAkhir >= 0 ? 'text-red-600' : 'text-red-600'">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
+            <span class="text-red-600">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
           </div>
 
+          <!-- INPUT SETORAN DIBAYAR + TOMBOL ACTION -->
           <div class="no-export pt-2">
             <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
-            <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs mb-1">
+            <div class="flex gap-1.5 mb-1">
+              <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
+              <button @click="prosesBayar(k)" class="bg-blue-600 text-white text-[11px] font-medium px-2.5 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
+                Simpan
+              </button>
+            </div>
             <div class="flex justify-between items-center text-[11px]">
               <span>Status / Sisa Setoran:</span>
-              <span class="font-bold text-green-600">
+              <span class="font-bold" :class="hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'text-green-600' : 'text-red-500'">
                 {{ hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(k.totalSetoranAkhir, k.sudahDibayar)) }}
               </span>
             </div>
@@ -215,15 +221,21 @@
           <hr class="my-1">
           <div class="flex justify-between font-bold text-sm">
             <span>Total Setoran Akhir</span>
-            <span :class="t.totalSetoranAkhir >= 0 ? 'text-red-600' : 'text-red-600'">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
+            <span class="text-red-600">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
           </div>
 
+          <!-- INPUT SETORAN DIBAYAR + TOMBOL ACTION -->
           <div class="no-export pt-2">
             <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
-            <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs mb-1">
+            <div class="flex gap-1.5 mb-1">
+              <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
+              <button @click="prosesBayar(t)" class="bg-blue-600 text-white text-[11px] font-medium px-2.5 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
+                Simpan
+              </button>
+            </div>
             <div class="flex justify-between items-center text-[11px]">
               <span>Status / Sisa Setoran:</span>
-              <span class="font-bold text-green-600">
+              <span class="font-bold" :class="hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'text-green-600' : 'text-red-500'">
                 {{ hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(t.totalSetoranAkhir, t.sudahDibayar)) }}
               </span>
             </div>
@@ -258,16 +270,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in transactions" :key="t.id" class="border-b hover:bg-gray-50">
-            <td class="py-2 pr-2 whitespace-nowrap">{{ t.tanggal }}</td>
-            <td class="py-2 pr-2">{{ t.jenisOmset }}</td>
-            <td class="py-2 pr-2">{{ t.korlap }}</td>
-            <td class="py-2 pr-2">{{ t.teknisi || '-' }}</td>
-            <td class="py-2 pr-2 text-right font-medium">{{ formatRupiah(t.omset) }}</td>
-            <td class="py-2 pr-2 text-right font-bold text-gray-800">{{ formatRupiah(t.setoran) }}</td>
+          <tr v-for="tr in transactions" :key="tr.id" class="border-b hover:bg-gray-50">
+            <td class="py-2 pr-2 whitespace-nowrap">{{ tr.tanggal }}</td>
+            <td class="py-2 pr-2">{{ tr.jenisOmset }}</td>
+            <td class="py-2 pr-2">{{ tr.korlap }}</td>
+            <td class="py-2 pr-2">{{ tr.teknisi || '-' }}</td>
+            <td class="py-2 pr-2 text-right font-medium">{{ formatRupiah(tr.omset) }}</td>
+            <td class="py-2 pr-2 text-right font-bold text-gray-800">{{ formatRupiah(tr.setoran) }}</td>
             <td class="py-2 pr-2 text-center whitespace-nowrap">
-              <button @click="editTransaction(t)" class="text-blue-600 hover:underline mr-2">Edit</button>
-              <button @click="removeTransaction(t)" class="text-red-500 hover:underline">Hapus</button>
+              <button @click="editTransaction(tr)" class="text-blue-600 hover:underline mr-2">Edit</button>
+              <button @click="removeTransaction(tr)" class="text-red-500 hover:underline">Hapus</button>
             </td>
           </tr>
         </tbody>
@@ -391,6 +403,29 @@ createApp({
       return Math.max(0, sisa);
     },
 
+    prosesBayar(worker) {
+      const dibayar = Number(worker.sudahDibayar) || 0;
+      const sisaBaru = this.hitungSisa(worker.totalSetoranAkhir, dibayar);
+      
+      // Update setoran sebelumnya dengan sisa kekurangannya
+      worker.setoranSebelumnya = sisaBaru;
+      worker.sudahDibayar = 0; // reset input pembayaran
+
+      // Simpan perubahan ke Apps Script jika fungsi update tersedia
+      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: sisaBaru })
+        .then(res => {
+          if (res && res.error) {
+            this.showToast(res.error, 'error');
+          } else {
+            this.showToast(sisaBaru === 0 ? 'Setoran LUNAS!' : 'Sisa setoran diperbarui');
+            this.loadData();
+          }
+        })
+        .catch(() => {
+          this.showToast(sisaBaru === 0 ? 'Setoran LUNAS (Lokal)' : 'Sisa setoran diperbarui (Lokal)');
+        });
+    },
+
     apiGet(action, params = {}) {
       const cleanUrl = this.scriptUrl.trim();
       const qs = new URLSearchParams({ action, ...params }).toString();
@@ -476,7 +511,12 @@ createApp({
       const noExportElems = card.querySelectorAll('.no-export');
       noExportElems.forEach(el => el.style.display = 'none');
 
-      html2canvas(card, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+      html2canvas(card, { 
+        backgroundColor: '#ffffff', 
+        scale: 2,
+        useCORS: true,
+        logging: false
+      }).then(canvas => {
         noExportElems.forEach(el => el.style.display = '');
         const link = document.createElement('a');
         link.download = `rekap-${Date.now()}.png`;
