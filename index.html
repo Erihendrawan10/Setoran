@@ -23,9 +23,9 @@
     <div class="flex items-center gap-2">
       <div>
         <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
-        <p class="text-sm text-slate-500">Setoran Teknisi</p>
+        <p class="text-sm text-slate-500">Pencatatan omset & setoran pekerja — tersinkron ke Google Sheets</p>
       </div>
-      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.4</span>
+      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.6</span>
     </div>
     <div class="flex items-center gap-2">
       <button @click="checkConnection" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
@@ -104,8 +104,8 @@
       <div>
         <label class="text-xs text-slate-500">Status Pekerja</label>
         <select v-model="form.jenisOmset" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="Korlap">Korlap (Omset Sendiri)</option>
           <option value="Teknisi">Teknisi</option>
+          <option value="Korlap">Korlap (Omset Sendiri)</option>
         </select>
       </div>
       <div>
@@ -139,14 +139,19 @@
         <input type="number" v-model.number="form.diskon" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
 
+      <!-- KOTAK HASIL PERHITUNGAN -->
       <div class="sm:col-span-3 bg-slate-50 p-3 rounded-lg border space-y-1">
         <div class="flex justify-between text-xs text-slate-600">
-          <span>Hak Pekerja ({{ form.jenisOmset === 'Teknisi' ? '45%' : '50%' }} dari Omset):</span>
+          <span>Hak Pekerja ({{ form.jenisOmset === 'Teknisi' ? '45%' : '50%' }} dari Omset Utuh):</span>
           <span class="font-bold text-indigo-600">{{ formatRupiah(hitungHakPekerjaForm) }}</span>
+        </div>
+        <div class="flex justify-between text-xs text-slate-600">
+          <span>Bagian Owner Bersih ({{ form.jenisOmset === 'Teknisi' ? '55%' : '50%' }} Omset - Diskon):</span>
+          <span class="font-semibold text-slate-700">{{ formatRupiah(hitungHakOwnerForm) }}</span>
         </div>
         <hr class="my-1">
         <div class="flex justify-between text-sm font-bold text-slate-800">
-          <span>Setoran (Hak Pekerja - Transfer - Diskon):</span>
+          <span>Setoran Wajib ke Owner (Owner Bersih - Transfer):</span>
           <span class="text-emerald-600">{{ formatRupiah(hitungSetoranForm) }}</span>
         </div>
       </div>
@@ -186,10 +191,10 @@
           <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(k.transferSendiri) }}</span></div>
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(k.diskonSendiri) }}</span></div>
           
-          <!-- SEKSI KOMISI KORLAP (5% Dari Omset Teknisi) -->
+          <!-- SEKSI KOMISI KORLAP (5% Dari Omset Transaksi) -->
           <div class="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 my-2 space-y-1">
             <div class="flex justify-between font-semibold text-indigo-800">
-              <span>Komisi Korlap (5% Teknisi):</span>
+              <span>Komisi Korlap (5% Omset):</span>
               <span>{{ formatRupiah(k.komisiKorlap) }}</span>
             </div>
             <div class="no-export flex items-center justify-between text-xs text-indigo-600">
@@ -308,7 +313,7 @@
             <th class="py-2 pr-3 text-right">Omset</th>
             <th class="py-2 pr-3 text-right">Transfer</th>
             <th class="py-2 pr-3 text-right">Diskon</th>
-            <th class="py-2 pr-3 text-right">Setoran</th>
+            <th class="py-2 pr-3 text-right">Setoran Wajib</th>
             <th class="py-2 pr-3 text-center">Aksi</th>
           </tr>
         </thead>
@@ -391,8 +396,7 @@ createApp({
       toast: { show: false, message: '', type: 'success' },
 
       filter: { startDate: '', endDate: '', worker: '' },
-      form: { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 },
-      settingsForm: { HakTeknisi: 45, OwnerDariTeknisi: 55, KomisiKorlapDariTeknisi: 5, PersenKorlapDariOmsetSendiri: 50 },
+      form: { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Teknisi', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 },
       workerForm: { nama: '', peran: 'Korlap', korlapInduk: '', setoranAwal: 0 },
 
       transactions: [],
@@ -405,16 +409,27 @@ createApp({
   computed: {
     korlapOptions() { return this.workers.filter(w => w.peran === 'Korlap'); },
     teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); },
+    
+    // Hak Pekerja Utuh dari Omset Gross
     hitungHakPekerjaForm() {
       const omset = Number(this.form.omset) || 0;
       const pct = (this.form.jenisOmset === 'Teknisi') ? 0.45 : 0.50;
       return omset * pct;
     },
-    hitungSetoranForm() {
-      const hak = this.hitungHakPekerjaForm;
-      const transfer = Number(this.form.transfer) || 0;
+
+    // Share Owner dikurangi Diskon 100%
+    hitungHakOwnerForm() {
+      const omset = Number(this.form.omset) || 0;
       const diskon = Number(this.form.diskon) || 0;
-      return hak - transfer - diskon;
+      const pct = (this.form.jenisOmset === 'Teknisi') ? 0.55 : 0.50;
+      return (omset * pct) - diskon;
+    },
+    
+    // Sisa Setoran Wajib ke Owner
+    hitungSetoranForm() {
+      const ownerBersih = this.hitungHakOwnerForm;
+      const transfer = Number(this.form.transfer) || 0;
+      return ownerBersih - transfer;
     }
   },
   mounted() {
@@ -496,7 +511,7 @@ createApp({
     },
     resetForm() {
       this.isEditing = false;
-      this.form = { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 };
+      this.form = { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Teknisi', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 };
     },
     editTransaction(t) {
       this.isEditing = true;
