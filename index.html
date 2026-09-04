@@ -19,7 +19,7 @@
   <!-- HEADER -->
   <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
     <div>
-      <h1 class="text-xl font-bold text-gray-800">Keuangan Operasional</h1>
+      <h1 class="text-xl font-bold text-gray-800">Keuangan Operasional 10.0</h1>
       <p class="text-xs text-gray-500">Pencatatan omset & setoran pekerja</p>
     </div>
     <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -173,7 +173,7 @@
           </div>
           <hr class="my-1">
           
-          <!-- TOTAL SETORAN AKHIR (HIJAU JIKA +, MERAH JIKA -) -->
+          <!-- TOTAL SETORAN AKHIR -->
           <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
             <div class="flex items-center gap-1">
@@ -187,14 +187,19 @@
           </div>
 
           <!-- INPUT SETORAN DIBAYAR -->
-          <div class="no-export pt-2 border-t">
+          <div class="no-export pt-2 border-t space-y-1">
             <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
-            <div class="flex gap-1.5 mb-1">
+            <div class="flex gap-1.5">
               <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
               <button @click="prosesBayar(k)" class="bg-blue-600 text-white text-[11px] font-medium px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
                 Simpan
               </button>
             </div>
+
+            <!-- TOMBOL BATALKAN PEMBAYARAN KEMBALI KE SEMULA -->
+            <button v-if="k.hasPaymentLog" @click="batalPembayaran(k)" class="w-full text-center text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-medium py-1 rounded mt-1">
+              ↩️ Batal Pembayaran Last (Kembalikan Ke Semula)
+            </button>
           </div>
         </div>
 
@@ -239,7 +244,7 @@
           </div>
           <hr class="my-1">
 
-          <!-- TOTAL SETORAN AKHIR (HIJAU JIKA +, MERAH JIKA -) -->
+          <!-- TOTAL SETORAN AKHIR -->
           <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
             <div class="flex items-center gap-1">
@@ -253,14 +258,19 @@
           </div>
 
           <!-- INPUT SETORAN DIBAYAR -->
-          <div class="no-export pt-2 border-t">
+          <div class="no-export pt-2 border-t space-y-1">
             <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
-            <div class="flex gap-1.5 mb-1">
+            <div class="flex gap-1.5">
               <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
               <button @click="prosesBayar(t)" class="bg-blue-600 text-white text-[11px] font-medium px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
                 Simpan
               </button>
             </div>
+
+            <!-- TOMBOL BATALKAN PEMBAYARAN KEMBALI KE SEMULA -->
+            <button v-if="t.hasPaymentLog" @click="batalPembayaran(t)" class="w-full text-center text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-medium py-1 rounded mt-1">
+              ↩️ Batal Pembayaran Last (Kembalikan Ke Semula)
+            </button>
           </div>
         </div>
 
@@ -449,7 +459,8 @@ createApp({
       this.apiPost('updateWorkerBalance', { 
         nama: worker.nama, 
         setoranSebelumnya: sisaBaru,
-        resetKomisi: resetKomisi
+        resetKomisi: resetKomisi,
+        dibayar: dibayar
       })
       .then(res => {
         if (res && res.error) {
@@ -461,6 +472,23 @@ createApp({
       })
       .catch(err => {
         this.showToast('Gagal menyimpan pembayaran: ' + err.message, 'error');
+      });
+    },
+
+    batalPembayaran(worker) {
+      if (!confirm(`Batalkan pembayaran terakhir untuk ${worker.nama} dan kembalikan seluruh nilai seperti sebelum disimpan?`)) return;
+
+      this.apiPost('cancelLastPayment', { nama: worker.nama })
+      .then(res => {
+        if (res && res.error) {
+          this.showToast(res.error, 'error');
+        } else {
+          this.showToast('Pembayaran berhasil dibatalkan & kondisi dikembalikan!');
+          this.loadData();
+        }
+      })
+      .catch(err => {
+        this.showToast('Gagal membatalkan pembayaran: ' + err.message, 'error');
       });
     },
 
