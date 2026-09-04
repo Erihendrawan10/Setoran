@@ -25,7 +25,7 @@
         <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
         <p class="text-sm text-slate-500">Pencatatan omset & setoran pekerja — tersinkron ke Google Sheets</p>
       </div>
-      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.6</span>
+      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.7</span>
     </div>
     <div class="flex items-center gap-2">
       <button @click="checkConnection" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
@@ -139,19 +139,15 @@
         <input type="number" v-model.number="form.diskon" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
 
-      <!-- KOTAK HASIL PERHITUNGAN -->
+      <!-- KOTAK LOGIKA PERHITUNGAN FORM -->
       <div class="sm:col-span-3 bg-slate-50 p-3 rounded-lg border space-y-1">
         <div class="flex justify-between text-xs text-slate-600">
-          <span>Hak Pekerja ({{ form.jenisOmset === 'Teknisi' ? '45%' : '50%' }} dari Omset Utuh):</span>
-          <span class="font-bold text-indigo-600">{{ formatRupiah(hitungHakPekerjaForm) }}</span>
-        </div>
-        <div class="flex justify-between text-xs text-slate-600">
-          <span>Bagian Owner Bersih ({{ form.jenisOmset === 'Teknisi' ? '55%' : '50%' }} Omset - Diskon):</span>
-          <span class="font-semibold text-slate-700">{{ formatRupiah(hitungHakOwnerForm) }}</span>
+          <span>Rumus Dasar:</span>
+          <span class="font-medium text-slate-700">Omset x {{ form.jenisOmset === 'Teknisi' ? '55%' : '50%' }} - Diskon - Transfer</span>
         </div>
         <hr class="my-1">
         <div class="flex justify-between text-sm font-bold text-slate-800">
-          <span>Setoran Wajib ke Owner (Owner Bersih - Transfer):</span>
+          <span>Total Setoran Wajib:</span>
           <span class="text-emerald-600">{{ formatRupiah(hitungSetoranForm) }}</span>
         </div>
       </div>
@@ -191,27 +187,22 @@
           <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(k.transferSendiri) }}</span></div>
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(k.diskonSendiri) }}</span></div>
           
-          <!-- SEKSI KOMISI KORLAP (5% Dari Omset Transaksi) -->
-          <div class="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 my-2 space-y-1">
+          <!-- DISPLAY KOMISI KORLAP RINGKAS -->
+          <div class="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 my-2">
             <div class="flex justify-between font-semibold text-indigo-800">
-              <span>Komisi Korlap (5% Omset):</span>
+              <span>Komisi Korlap (5% Omset Teknisi):</span>
               <span>{{ formatRupiah(k.komisiKorlap) }}</span>
-            </div>
-            <div class="no-export flex items-center justify-between text-xs text-indigo-600">
-              <span>Komisi Dibayar:</span>
-              <input type="number" v-model.number="k.komisiDibayar" placeholder="0" class="w-28 border rounded px-1.5 py-0.5 text-right font-medium">
-            </div>
-            <div class="flex justify-between text-xs font-bold text-indigo-900 border-t border-indigo-200 pt-1">
-              <span>Sisa Komisi:</span>
-              <span>{{ formatRupiah(Math.max(0, k.komisiKorlap - (k.komisiDibayar || 0))) }}</span>
             </div>
           </div>
 
           <hr class="my-1">
           <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(k.totalSetoranPeriodeIni) }}</b></div>
-          <div class="flex justify-between text-xs text-slate-500"><span>Setoran Sebelumnya</span><span>{{ formatRupiah(k.setoranSebelumnya) }}</span></div>
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Setoran Sebelumnya</span>
+            <span>{{ formatRupiah(k.setoranSebelumnya) }}</span>
+          </div>
           <hr class="my-1">
-          <div class="flex justify-between font-bold text-slate-800">
+          <div class="flex justify-between font-bold text-slate-800 text-base">
             <span>Total Setoran Akhir</span>
             <span :class="k.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
           </div>
@@ -267,9 +258,12 @@
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(t.totalDiskon) }}</span></div>
           <hr class="my-1">
           <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(t.totalSetoranPeriodeIni) }}</b></div>
-          <div class="flex justify-between text-xs text-slate-500"><span>Setoran Sebelumnya</span><span>{{ formatRupiah(t.setoranSebelumnya) }}</span></div>
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Setoran Sebelumnya</span>
+            <span>{{ formatRupiah(t.setoranSebelumnya) }}</span>
+          </div>
           <hr class="my-1">
-          <div class="flex justify-between font-bold text-slate-800">
+          <div class="flex justify-between font-bold text-slate-800 text-base">
             <span>Total Setoran Akhir</span>
             <span :class="t.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
           </div>
@@ -349,7 +343,7 @@
     </div>
   </div>
 
-  <!-- MODAL: PENGATURAN PEKERJA & SETORAN AWAL -->
+  <!-- MODAL: PENGATURAN PEKERJA -->
   <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-lg max-h-[85vh] overflow-y-auto">
       <h3 class="font-semibold text-slate-800 mb-3">👤 Tambah / Kelola Pekerja</h3>
@@ -364,7 +358,7 @@
           <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
         </select>
         <div>
-          <label class="text-xs text-slate-500">Setoran Awal / Saldo Awal Sebelumnya (Rp)</label>
+          <label class="text-xs text-slate-500">Setoran Awal / Saldo Sebelumnya (Rp)</label>
           <input type="number" v-model.number="workerForm.setoranAwal" placeholder="0" class="w-full border rounded-lg px-3 py-2 text-sm">
         </div>
         <button type="submit" class="bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium">Tambah Pekerja</button>
@@ -410,26 +404,14 @@ createApp({
     korlapOptions() { return this.workers.filter(w => w.peran === 'Korlap'); },
     teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); },
     
-    // Hak Pekerja Utuh dari Omset Gross
-    hitungHakPekerjaForm() {
-      const omset = Number(this.form.omset) || 0;
-      const pct = (this.form.jenisOmset === 'Teknisi') ? 0.45 : 0.50;
-      return omset * pct;
-    },
-
-    // Share Owner dikurangi Diskon 100%
-    hitungHakOwnerForm() {
-      const omset = Number(this.form.omset) || 0;
-      const diskon = Number(this.form.diskon) || 0;
-      const pct = (this.form.jenisOmset === 'Teknisi') ? 0.55 : 0.50;
-      return (omset * pct) - diskon;
-    },
-    
-    // Sisa Setoran Wajib ke Owner
+    // Perhitungan otomatis Setoran pada Form Vue
     hitungSetoranForm() {
-      const ownerBersih = this.hitungHakOwnerForm;
+      const omset = Number(this.form.omset) || 0;
       const transfer = Number(this.form.transfer) || 0;
-      return ownerBersih - transfer;
+      const diskon = Number(this.form.diskon) || 0;
+      const persen = (this.form.jenisOmset === 'Teknisi') ? 0.55 : 0.50;
+      
+      return (omset * persen) - diskon - transfer;
     }
   },
   mounted() {
@@ -442,7 +424,7 @@ createApp({
     checkConnection() {
       if (!this.scriptUrl) { this.connectionStatus = 'offline'; return; }
       this.connectionStatus = 'checking';
-      this.apiGet('getSettings')
+      this.apiGet('getWorkers')
         .then(res => { this.connectionStatus = res && !res.error ? 'online' : 'offline'; })
         .catch(() => { this.connectionStatus = 'offline'; });
     },
@@ -548,7 +530,7 @@ createApp({
       });
     },
 
-    /* EXPORT */
+    /* EXPORT CARD */
     exportCard(event) {
       const card = event.target.closest('.printable-card');
       if (!card) return;
