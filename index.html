@@ -2,14 +2,14 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Keuangan Operasional</title>
-<!-- Cari 2 baris script Vue & html2canvas lama di <head>, lalu ganti dengan ini: -->
+<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
-  [v-cloak] { display: none; }
-  body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
+  [v-cloak] { display: none !important; }
+  body { font-family: 'Segoe UI', Roboto, -apple-system, sans-serif; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 </style>
@@ -25,7 +25,7 @@
         <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
         <p class="text-sm text-slate-500">Pencatatan omset & setoran pekerja — tersinkron ke Google Sheets</p>
       </div>
-      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">V.8</span>
+      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v9</span>
     </div>
     <div class="flex items-center gap-2">
       <button @click="checkConnection" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
@@ -139,7 +139,6 @@
         <input type="number" v-model.number="form.diskon" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
 
-      <!-- KOTAK LOGIKA PERHITUNGAN FORM -->
       <div class="sm:col-span-3 bg-slate-50 p-3 rounded-lg border space-y-1">
         <div class="flex justify-between text-xs text-slate-600">
           <span>Rumus Dasar:</span>
@@ -187,7 +186,6 @@
           <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(k.transferSendiri) }}</span></div>
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(k.diskonSendiri) }}</span></div>
           
-          <!-- DISPLAY KOMISI KORLAP RINGKAS -->
           <div class="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 my-2">
             <div class="flex justify-between font-semibold text-indigo-800">
               <span>Komisi Korlap (5% Omset Teknisi):</span>
@@ -378,7 +376,7 @@ const { createApp } = Vue;
 createApp({
   data() {
     return {
-      scriptUrl: localStorage.getItem('apps_script_url') || '',
+      scriptUrl: (localStorage.getItem('apps_script_url') || '').trim(),
       tempUrl: '',
       connectionStatus: 'offline',
       showConfig: false,
@@ -404,7 +402,6 @@ createApp({
     korlapOptions() { return this.workers.filter(w => w.peran === 'Korlap'); },
     teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); },
     
-    // Perhitungan otomatis Setoran pada Form Vue
     hitungSetoranForm() {
       const omset = Number(this.form.omset) || 0;
       const transfer = Number(this.form.transfer) || 0;
@@ -418,6 +415,8 @@ createApp({
     if (this.scriptUrl) {
       this.checkConnection();
       this.loadData();
+    } else {
+      this.showConfig = true;
     }
   },
   methods: {
@@ -452,11 +451,13 @@ createApp({
 
     /* API HELPERS */
     apiGet(action, params = {}) {
+      const cleanUrl = this.scriptUrl.trim();
       const qs = new URLSearchParams({ action, ...params }).toString();
-      return fetch(`${this.scriptUrl}?${qs}`).then(r => r.json());
+      return fetch(`${cleanUrl}?${qs}`).then(r => r.json());
     },
     apiPost(action, payload = {}) {
-      return fetch(this.scriptUrl, {
+      const cleanUrl = this.scriptUrl.trim();
+      return fetch(cleanUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, ...payload })
@@ -472,14 +473,16 @@ createApp({
         endDate: this.filter.endDate,
         worker: this.filter.worker
       }).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.transactions = res.transactions;
-        this.workers = res.workers;
-        this.summary = res.summary;
-        this.rekapKorlap = res.rekapKorlap;
-        this.rekapTeknisi = res.rekapTeknisi;
-      }).catch(() => this.showToast('Gagal memuat data.', 'error'))
-        .finally(() => this.loading = false);
+        if (res && res.error) { this.showToast(res.error, 'error'); return; }
+        this.transactions = res.transactions || [];
+        this.workers = res.workers || [];
+        this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0 };
+        this.rekapKorlap = res.rekapKorlap || [];
+        this.rekapTeknisi = res.rekapTeknisi || [];
+      }).catch(err => {
+        console.error(err);
+        this.showToast('Gagal memuat data dari server.', 'error');
+      }).finally(() => this.loading = false);
     },
     resetFilter() {
       this.filter = { startDate: '', endDate: '', worker: '' };
