@@ -1,483 +1,331 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-  [v-cloak] { display: none; }
-  body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-</style>
-</head>
-<body class="bg-slate-100 min-h-screen pb-16">
+/**
+ * =====================================================================
+ * APLIKASI PENCATATAN KEUANGAN OPERASIONAL — BACKEND (Google Apps Script)
+ * =====================================================================
+ */
 
-<div id="app" v-cloak class="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-6">
+const SHEET_TRANSAKSI  = 'Transaksi';
+const SHEET_PEKERJA    = 'Pekerja';
+const SHEET_PENGATURAN = 'Pengaturan';
+const SHEET_SETORAN    = 'SetoranAwal';
 
-  <!-- ============ HEADER ============ -->
-  <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-    <div class="flex items-center gap-2">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
-        <p class="text-sm text-slate-500">Pencatatan omset, komisi Korlap & Teknisi — tersinkron ke Google Sheets</p>
-      </div>
-      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v1.0</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <!-- Indikator status koneksi ke Apps Script -->
-      <button @click="checkConnection" :title="connectionStatus === 'online' ? 'Terhubung ke Apps Script' : connectionStatus === 'checking' ? 'Mengecek koneksi...' : 'Tidak terhubung — klik untuk cek ulang'"
-        class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
-        :class="{
-          'bg-emerald-50 border-emerald-300 text-emerald-700': connectionStatus === 'online',
-          'bg-red-50 border-red-300 text-red-700': connectionStatus === 'offline',
-          'bg-slate-50 border-slate-300 text-slate-500': connectionStatus === 'checking'
-        }">
-        <span class="w-2.5 h-2.5 rounded-full" :class="{
-          'bg-emerald-500': connectionStatus === 'online',
-          'bg-red-500': connectionStatus === 'offline',
-          'bg-slate-400 animate-pulse': connectionStatus === 'checking'
-        }"></span>
-        {{ connectionStatus === 'online' ? 'Terhubung' : connectionStatus === 'checking' ? 'Mengecek...' : 'Terputus' }}
-      </button>
-      <button @click="showSettings = true" class="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm font-medium hover:bg-slate-50">⚙️ Pengaturan</button>
-      <button @click="showConfig = true" class="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm font-medium hover:bg-slate-50">🔗 Koneksi</button>
-    </div>
-  </header>
+const HEADER_TRANSAKSI  = [
+  'ID', 'Timestamp', 'Tanggal', 'JenisOmset', 'Korlap', 'Teknisi',
+  'Omset', 'Transfer', 'Diskon', 'Setoran', 'StatusBayar', 'Keterangan'
+];
+const HEADER_PEKERJA    = ['Nama', 'Peran', 'KorlapInduk'];
+const HEADER_PENGATURAN = ['Key', 'Value'];
+const HEADER_SETORAN    = ['NamaPekerja', 'NominalSetoranAwal'];
 
-  <!-- ============ BANNER: URL BELUM DIISI ============ -->
-  <div v-if="!scriptUrl" class="bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg p-3">
-    URL Apps Script belum diatur. Klik tombol <b>🔗 Koneksi</b> untuk menempelkan URL Web App Anda.
-  </div>
-
-  <!-- ============ TOAST ============ -->
-  <div v-if="toast.show" class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm"
-       :class="toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'">
-    {{ toast.message }}
-  </div>
-
-  <!-- ============ KARTU INFORMASI FINANSIAL (DINAMIS) ============ -->
-  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-blue-500">
-      <p class="text-xs text-slate-500 uppercase tracking-wide">Total Omset</p>
-      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalOmset) }}</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-emerald-500">
-      <p class="text-xs text-slate-500 uppercase tracking-wide">Total Transfer Masuk</p>
-      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalTransferMasuk) }}</p>
-    </div>
-    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-purple-500">
-      <p class="text-xs text-slate-500 uppercase tracking-wide">Profit Bersih Owner</p>
-      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalOwnerShare) }}</p>
-    </div>
-  </section>
-
-  <div v-if="summary.jumlahTertunda > 0" class="bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg p-3 flex items-center gap-2">
-    <span>⚠️</span>
-    <span><b>{{ summary.jumlahTertunda }}</b> transaksi berstatus <b>Belum TF / Tertunda</b> — nominalnya otomatis dilimpahkan ke rekap setiap pekerja terkait sampai dilunasi.</span>
-  </div>
-
-  <!-- ============ FILTER ============ -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="font-semibold text-slate-700 mb-3">🔍 Filter Data</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-      <div>
-        <label class="text-xs text-slate-500">Dari Tanggal</label>
-        <input type="date" v-model="filter.startDate" class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Sampai Tanggal</label>
-        <input type="date" v-model="filter.endDate" class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Pekerja</label>
-        <select v-model="filter.worker" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="">Semua Pekerja</option>
-          <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
-        </select>
-      </div>
-      <div class="flex items-end gap-2">
-        <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-blue-700">Terapkan</button>
-        <button @click="resetFilter" class="px-3 py-2 rounded-lg border text-sm">Reset</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ FORM TAMBAH TRANSAKSI ============ -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <div class="flex justify-between items-center mb-3">
-      <h2 class="font-semibold text-slate-700">➕ Catat Transaksi Baru</h2>
-      <button @click="showForm = !showForm" class="text-sm text-blue-600">{{ showForm ? 'Tutup' : 'Buka Form' }}</button>
-    </div>
-    <form v-if="showForm" @submit.prevent="submitTransaction" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div>
-        <label class="text-xs text-slate-500">Tanggal</label>
-        <input type="date" v-model="form.tanggal" required class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Jenis Omset</label>
-        <select v-model="form.jenisOmset" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="Korlap">Omset Korlap (sendiri)</option>
-          <option value="Teknisi">Omset Teknisi</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Korlap</label>
-        <select v-model="form.korlap" required class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="" disabled>Pilih Korlap</option>
-          <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
-        </select>
-      </div>
-      <div v-if="form.jenisOmset === 'Teknisi'">
-        <label class="text-xs text-slate-500">Teknisi</label>
-        <select v-model="form.teknisi" required class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="" disabled>Pilih Teknisi</option>
-          <option v-for="t in teknisiOptions" :key="t.nama" :value="t.nama">{{ t.nama }}</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Nominal Omset (Rp)</label>
-        <input type="number" v-model.number="form.omset" required min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Status Bayar</label>
-        <select v-model="form.statusBayar" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="Lunas">Lunas</option>
-          <option value="Tertunda">Belum TF / Tertunda</option>
-        </select>
-      </div>
-      <div class="sm:col-span-3">
-        <label class="text-xs text-slate-500">Keterangan</label>
-        <input type="text" v-model="form.keterangan" placeholder="Opsional" class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div class="sm:col-span-3">
-        <button type="submit" :disabled="saving" class="bg-emerald-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
-          {{ saving ? 'Menyimpan...' : 'Simpan Transaksi' }}
-        </button>
-      </div>
-    </form>
-  </section>
-
-  <!-- ============ REKAP KORLAP ============ -->
-  <section>
-    <h2 class="font-semibold text-slate-700 mb-3">👷 Rekap Individu — Korlap</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="k in rekapKorlap" :key="k.nama" class="printable-card bg-white rounded-xl shadow p-4 relative">
-        <div class="flex justify-between items-start mb-2">
-          <div>
-            <p class="font-bold text-slate-800">{{ k.nama }}</p>
-            <p class="text-xs text-slate-400">Korlap</p>
-          </div>
-          <span v-if="k.adaPelimpahan" class="bg-red-100 text-red-600 text-[10px] font-semibold px-2 py-1 rounded-full">⚠️ Ada Pelimpahan</span>
-        </div>
-        <div class="space-y-1 text-sm text-slate-600">
-          <div class="flex justify-between"><span>Omset Dikelola</span><b>{{ formatRupiah(k.totalOmsetDikelola) }}</b></div>
-          <div class="flex justify-between"><span>— Omset Sendiri</span><span>{{ formatRupiah(k.omsetSendiri) }}</span></div>
-          <div class="flex justify-between"><span>— Omset Teknisi Binaan</span><span>{{ formatRupiah(k.omsetTeknisiDibawah) }}</span></div>
-          <hr class="my-1">
-          <div class="flex justify-between"><span>Hak dari Omset Sendiri</span><span>{{ formatRupiah(k.hakDariSendiri) }}</span></div>
-          <div class="flex justify-between"><span>Komisi 5% dari Teknisi</span><span>{{ formatRupiah(k.komisiDariTeknisi) }}</span></div>
-          <div class="flex justify-between font-bold text-slate-800 border-t pt-1 mt-1"><span>Total Hak Korlap</span><span>{{ formatRupiah(k.totalHak) }}</span></div>
-          <div v-if="k.adaPelimpahan" class="flex justify-between text-red-600 text-xs pt-1">
-            <span>Belum Disetor ({{ k.jumlahTransaksiTertunda }} trx)</span><span>{{ formatRupiah(k.komisiTertunda) }}</span>
-          </div>
-        </div>
-        <button @click="exportCard($event)" class="no-export mt-3 w-full text-xs bg-slate-100 hover:bg-slate-200 rounded-lg py-2 font-medium">🖼️ Print / Export Gambar</button>
-      </div>
-      <p v-if="rekapKorlap.length === 0" class="text-sm text-slate-400 col-span-full">Belum ada data Korlap. Tambahkan lewat menu Pengaturan.</p>
-    </div>
-  </section>
-
-  <!-- ============ REKAP TEKNISI ============ -->
-  <section>
-    <h2 class="font-semibold text-slate-700 mb-3">🛠️ Rekap Individu — Teknisi</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="t in rekapTeknisi" :key="t.nama" class="printable-card bg-white rounded-xl shadow p-4 relative">
-        <div class="flex justify-between items-start mb-2">
-          <div>
-            <p class="font-bold text-slate-800">{{ t.nama }}</p>
-            <p class="text-xs text-slate-400">Teknisi</p>
-          </div>
-          <span v-if="t.adaPelimpahan" class="bg-red-100 text-red-600 text-[10px] font-semibold px-2 py-1 rounded-full">⚠️ Ada Pelimpahan</span>
-        </div>
-        <div class="space-y-1 text-sm text-slate-600">
-          <div class="flex justify-between"><span>Total Omset Dikerjakan</span><b>{{ formatRupiah(t.totalOmset) }}</b></div>
-          <div class="flex justify-between font-bold text-slate-800 border-t pt-1 mt-1"><span>Hak Teknisi (45%)</span><span>{{ formatRupiah(t.totalHak) }}</span></div>
-          <div v-if="t.adaPelimpahan" class="flex justify-between text-red-600 text-xs pt-1">
-            <span>Belum Disetor ({{ t.jumlahTransaksiTertunda }} trx)</span><span>{{ formatRupiah(t.hakTertunda) }}</span>
-          </div>
-        </div>
-        <button @click="exportCard($event)" class="no-export mt-3 w-full text-xs bg-slate-100 hover:bg-slate-200 rounded-lg py-2 font-medium">🖼️ Print / Export Gambar</button>
-      </div>
-      <p v-if="rekapTeknisi.length === 0" class="text-sm text-slate-400 col-span-full">Belum ada data Teknisi. Tambahkan lewat menu Pengaturan.</p>
-    </div>
-  </section>
-
-  <!-- ============ TABEL TRANSAKSI ============ -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="font-semibold text-slate-700 mb-3">📋 Daftar Transaksi ({{ transactions.length }})</h2>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-slate-500 border-b">
-            <th class="py-2 pr-3">Tanggal</th>
-            <th class="py-2 pr-3">Jenis</th>
-            <th class="py-2 pr-3">Korlap</th>
-            <th class="py-2 pr-3">Teknisi</th>
-            <th class="py-2 pr-3 text-right">Omset</th>
-            <th class="py-2 pr-3">Status</th>
-            <th class="py-2 pr-3">Ket.</th>
-            <th class="py-2 pr-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in transactions" :key="t.id" class="border-b last:border-0 hover:bg-slate-50">
-            <td class="py-2 pr-3 whitespace-nowrap">{{ t.tanggal }}</td>
-            <td class="py-2 pr-3">{{ t.jenisOmset }}</td>
-            <td class="py-2 pr-3">{{ t.korlap }}</td>
-            <td class="py-2 pr-3">{{ t.teknisi || '-' }}</td>
-            <td class="py-2 pr-3 text-right">{{ formatRupiah(t.omset) }}</td>
-            <td class="py-2 pr-3">
-              <span :class="t.statusBayar === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'" class="text-xs font-semibold px-2 py-1 rounded-full">{{ t.statusBayar === 'Lunas' ? 'Lunas' : 'Belum TF' }}</span>
-            </td>
-            <td class="py-2 pr-3 text-slate-400 max-w-[140px] truncate">{{ t.keterangan }}</td>
-            <td class="py-2 pr-3 whitespace-nowrap">
-              <button v-if="t.statusBayar !== 'Lunas'" @click="markLunas(t)" class="text-xs text-emerald-600 hover:underline mr-2">Tandai Lunas</button>
-              <button @click="removeTransaction(t)" class="text-xs text-red-500 hover:underline">Hapus</button>
-            </td>
-          </tr>
-          <tr v-if="transactions.length === 0">
-            <td colspan="8" class="py-6 text-center text-slate-400">Belum ada transaksi pada rentang/filter ini.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ============ MODAL: KONEKSI ============ -->
-  <div v-if="showConfig" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-md">
-      <h3 class="font-semibold text-slate-800 mb-2">🔗 Koneksi Google Apps Script</h3>
-      <p class="text-xs text-slate-500 mb-3">Tempelkan URL Web App hasil deploy Apps Script Anda di sini.</p>
-      <input type="text" v-model="tempUrl" placeholder="https://script.google.com/macros/s/xxx/exec" class="w-full border rounded-lg px-3 py-2 text-sm mb-3">
-      <div class="flex justify-end gap-2">
-        <button @click="showConfig = false" class="px-3 py-2 text-sm rounded-lg border">Batal</button>
-        <button @click="saveConfig" class="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white">Simpan</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ MODAL: PENGATURAN ============ -->
-  <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-lg max-h-[85vh] overflow-y-auto">
-      <h3 class="font-semibold text-slate-800 mb-3">⚙️ Pengaturan Bagi Hasil</h3>
-      <div class="grid grid-cols-2 gap-3 mb-5">
-        <div>
-          <label class="text-xs text-slate-500">Potongan Teknisi (%)</label>
-          <input type="number" v-model.number="settingsForm.PotonganTeknisi" class="w-full border rounded-lg px-3 py-2 text-sm">
-        </div>
-        <div>
-          <label class="text-xs text-slate-500">Owner dari Potongan (%)</label>
-          <input type="number" v-model.number="settingsForm.OwnerDariTeknisi" class="w-full border rounded-lg px-3 py-2 text-sm">
-        </div>
-        <div>
-          <label class="text-xs text-slate-500">Komisi Korlap dari Teknisi (%)</label>
-          <input type="number" v-model.number="settingsForm.KomisiKorlapDariTeknisi" class="w-full border rounded-lg px-3 py-2 text-sm">
-        </div>
-        <div>
-          <label class="text-xs text-slate-500">Persen Korlap dari Omset Sendiri (%)</label>
-          <input type="number" v-model.number="settingsForm.PersenKorlapDariOmsetSendiri" class="w-full border rounded-lg px-3 py-2 text-sm">
-        </div>
-      </div>
-      <button @click="saveSettingsForm" class="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium mb-5">Simpan Pengaturan</button>
-
-      <hr class="mb-4">
-      <h3 class="font-semibold text-slate-800 mb-3">👤 Tambah Pekerja</h3>
-      <form @submit.prevent="submitWorker" class="grid grid-cols-1 gap-3">
-        <input type="text" v-model="workerForm.nama" placeholder="Nama pekerja" required class="w-full border rounded-lg px-3 py-2 text-sm">
-        <select v-model="workerForm.peran" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="Korlap">Korlap</option>
-          <option value="Teknisi">Teknisi</option>
-        </select>
-        <select v-if="workerForm.peran === 'Teknisi'" v-model="workerForm.korlapInduk" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="">Tanpa Korlap Induk</option>
-          <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
-        </select>
-        <button type="submit" class="bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium">Tambah Pekerja</button>
-      </form>
-
-      <div class="flex justify-end mt-4">
-        <button @click="showSettings = false" class="px-3 py-2 text-sm rounded-lg border">Tutup</button>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script>
-const { createApp } = Vue;
-
-createApp({
-  data() {
-    return {
-      scriptUrl: localStorage.getItem('apps_script_url') || '',
-      tempUrl: '',
-      connectionStatus: 'offline', // 'online' | 'offline' | 'checking'
-      showConfig: false,
-      showSettings: false,
-      showForm: false,
-      saving: false,
-      loading: false,
-      toast: { show: false, message: '', type: 'success' },
-
-      filter: { startDate: '', endDate: '', worker: '' },
-      form: { tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, statusBayar: 'Lunas', keterangan: '' },
-      settingsForm: { PotonganTeknisi: 55, OwnerDariTeknisi: 50, KomisiKorlapDariTeknisi: 5, PersenKorlapDariOmsetSendiri: 50 },
-      workerForm: { nama: '', peran: 'Korlap', korlapInduk: '' },
-
-      transactions: [],
-      workers: [],
-      summary: { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, jumlahTertunda: 0 },
-      rekapKorlap: [],
-      rekapTeknisi: []
-    };
-  },
-  computed: {
-    korlapOptions() { return this.workers.filter(w => w.peran === 'Korlap'); },
-    teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); }
-  },
-  mounted() {
-    if (this.scriptUrl) {
-      this.checkConnection();
-      this.loadData();
+function doGet(e) {
+  try {
+    ensureSheets_();
+    const action = (e && e.parameter && e.parameter.action) || 'getData';
+    let result;
+    switch (action) {
+      case 'getData':
+        result = getData(e.parameter);
+        break;
+      case 'getWorkers':
+        result = getWorkers();
+        break;
+      case 'getSettings':
+        result = getSettings();
+        break;
+      default:
+        result = { error: 'Unknown action: ' + action };
     }
-  },
-  methods: {
-    checkConnection() {
-      if (!this.scriptUrl) { this.connectionStatus = 'offline'; return; }
-      this.connectionStatus = 'checking';
-      this.apiGet('getSettings')
-        .then(res => { this.connectionStatus = res && !res.error ? 'online' : 'offline'; })
-        .catch(() => { this.connectionStatus = 'offline'; });
-    },
-    formatRupiah(v) {
-      v = Number(v) || 0;
-      return 'Rp ' + v.toLocaleString('id-ID', { maximumFractionDigits: 0 });
-    },
-    showToast(message, type = 'success') {
-      this.toast = { show: true, message, type };
-      setTimeout(() => { this.toast.show = false; }, 3000);
-    },
-    saveConfig() {
-      this.scriptUrl = this.tempUrl.trim();
-      localStorage.setItem('apps_script_url', this.scriptUrl);
-      this.showConfig = false;
-      if (this.scriptUrl) {
-        this.checkConnection();
-        this.loadData();
-      }
-    },
+    return jsonResponse_(result);
+  } catch (err) {
+    return jsonResponse_({ error: err.message });
+  }
+}
 
-    /* --------- API HELPERS --------- */
-    apiGet(action, params = {}) {
-      const qs = new URLSearchParams({ action, ...params }).toString();
-      return fetch(`${this.scriptUrl}?${qs}`).then(r => r.json());
-    },
-    apiPost(action, payload = {}) {
-      return fetch(this.scriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
-        body: JSON.stringify({ action, ...payload })
-      }).then(r => r.json());
-    },
+function doPost(e) {
+  try {
+    ensureSheets_();
+    const body = JSON.parse(e.postData.contents);
+    const action = body.action;
+    let result;
+    switch (action) {
+      case 'saveTransaction':
+        result = saveTransaction(body.data);
+        break;
+      case 'updateTransaction':
+        result = updateTransaction(body.data);
+        break;
+      case 'saveWorker':
+        result = saveWorker(body.data);
+        break;
+      case 'deleteTransaction':
+        result = deleteTransaction(body.id);
+        break;
+      case 'saveSetoranAwal':
+        result = saveSetoranAwal(body.data);
+        break;
+      default:
+        result = { error: 'Unknown action: ' + action };
+    }
+    return jsonResponse_(result);
+  } catch (err) {
+    return jsonResponse_({ error: err.message });
+  }
+}
 
-    /* --------- LOAD DATA --------- */
-    loadData() {
-      if (!this.scriptUrl) { this.showConfig = true; return; }
-      this.loading = true;
-      this.apiGet('getData', {
-        startDate: this.filter.startDate,
-        endDate: this.filter.endDate,
-        worker: this.filter.worker
-      }).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.transactions = res.transactions;
-        this.workers = res.workers;
-        this.summary = res.summary;
-        this.rekapKorlap = res.rekapKorlap;
-        this.rekapTeknisi = res.rekapTeknisi;
-        this.settingsForm = { ...this.settingsForm, ...res.settings };
-      }).catch(() => this.showToast('Gagal memuat data. Cek URL Apps Script.', 'error'))
-        .finally(() => this.loading = false);
-    },
-    resetFilter() {
-      this.filter = { startDate: '', endDate: '', worker: '' };
-      this.loadData();
-    },
+function jsonResponse_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
-    /* --------- TRANSAKSI --------- */
-    submitTransaction() {
-      this.saving = true;
-      this.apiPost('saveTransaction', { data: this.form }).then(res => {
-        if (res.error || res.success === false) { this.showToast(res.error || 'Gagal menyimpan', 'error'); return; }
-        this.showToast('Transaksi berhasil disimpan');
-        this.form = { tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, statusBayar: 'Lunas', keterangan: '' };
-        this.loadData();
-      }).catch(() => this.showToast('Gagal menyimpan transaksi', 'error'))
-        .finally(() => this.saving = false);
-    },
-    markLunas(t) {
-      this.apiPost('updateStatus', { id: t.id, status: 'Lunas' }).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.showToast('Status diperbarui menjadi Lunas');
-        this.loadData();
-      });
-    },
-    removeTransaction(t) {
-      if (!confirm(`Hapus transaksi tanggal ${t.tanggal} senilai ${this.formatRupiah(t.omset)}?`)) return;
-      this.apiPost('deleteTransaction', { id: t.id }).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.showToast('Transaksi dihapus');
-        this.loadData();
-      });
-    },
+function ensureSheets_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    /* --------- PENGATURAN & PEKERJA --------- */
-    saveSettingsForm() {
-      this.apiPost('saveSettings', { data: this.settingsForm }).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.showToast('Pengaturan bagi hasil disimpan');
-        this.loadData();
-      });
-    },
-    submitWorker() {
-      this.apiPost('saveWorker', { data: this.workerForm }).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.showToast('Pekerja ditambahkan');
-        this.workerForm = { nama: '', peran: 'Korlap', korlapInduk: '' };
-        this.loadData();
-      });
-    },
+  let shTrans = ss.getSheetByName(SHEET_TRANSAKSI);
+  if (!shTrans) {
+    shTrans = ss.insertSheet(SHEET_TRANSAKSI);
+    shTrans.appendRow(HEADER_TRANSAKSI);
+    shTrans.setFrozenRows(1);
+  }
 
-    /* --------- EXPORT CARD KE GAMBAR --------- */
-    exportCard(event) {
-      const card = event.target.closest('.printable-card');
-      if (!card) return;
-      const btn = event.target;
-      btn.style.visibility = 'hidden';
-      html2canvas(card, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-        btn.style.visibility = 'visible';
-        const link = document.createElement('a');
-        link.download = `rekap-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      });
+  let shPekerja = ss.getSheetByName(SHEET_PEKERJA);
+  if (!shPekerja) {
+    shPekerja = ss.insertSheet(SHEET_PEKERJA);
+    shPekerja.appendRow(HEADER_PEKERJA);
+    shPekerja.setFrozenRows(1);
+  }
+
+  let shSettings = ss.getSheetByName(SHEET_PENGATURAN);
+  if (!shSettings) {
+    shSettings = ss.insertSheet(SHEET_PENGATURAN);
+    shSettings.appendRow(HEADER_PENGATURAN);
+  }
+
+  let shSetoran = ss.getSheetByName(SHEET_SETORAN);
+  if (!shSetoran) {
+    shSetoran = ss.insertSheet(SHEET_SETORAN);
+    shSetoran.appendRow(HEADER_SETORAN);
+    shSetoran.setFrozenRows(1);
+  }
+}
+
+function getSettings() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PENGATURAN);
+  const data = sh.getDataRange().getValues();
+  const settings = {};
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    settings[data[i][0]] = Number(data[i][1]);
+  }
+  return settings;
+}
+
+function getWorkers() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEKERJA);
+  const data = sh.getDataRange().getValues();
+  const workers = [];
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    workers.push({ nama: data[i][0], peran: data[i][1], korlapInduk: data[i][2] || '' });
+  }
+  return workers;
+}
+
+function saveWorker(data) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEKERJA);
+  sh.appendRow([data.nama, data.peran, data.korlapInduk || '']);
+  return { success: true, workers: getWorkers() };
+}
+
+function getSetoranAwalMap_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SETORAN);
+  if (!sh) return {};
+  const data = sh.getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      map[data[i][0]] = Number(data[i][1]) || 0;
     }
   }
-}).mount('#app');
-</script>
-</body>
-</html>
+  return map;
+}
+
+function saveSetoranAwal(data) {
+  const { nama, nominal } = data;
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SETORAN);
+  const values = sh.getDataRange().getValues();
+  let found = false;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === nama) {
+      sh.getRange(i + 1, 2).setValue(Number(nominal) || 0);
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    sh.appendRow([nama, Number(nominal) || 0]);
+  }
+  return { success: true };
+}
+
+function saveTransaction(data) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_TRANSAKSI);
+  const id = 'TRX-' + new Date().getTime();
+  const omset = Number(data.omset) || 0;
+  const transfer = Number(data.transfer) || 0;
+  const diskon = Number(data.diskon) || 0;
+  const setoran = omset - transfer - diskon;
+
+  sh.appendRow([
+    id,
+    new Date(),
+    data.tanggal,
+    data.jenisOmset,
+    data.korlap || '',
+    data.teknisi || '',
+    omset,
+    transfer,
+    diskon,
+    setoran,
+    '', // Status Bayar dihapus
+    ''  // Keterangan dihapus
+  ]);
+
+  return { success: true, id: id };
+}
+
+function updateTransaction(data) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_TRANSAKSI);
+  const values = sh.getDataRange().getValues();
+  const omset = Number(data.omset) || 0;
+  const transfer = Number(data.transfer) || 0;
+  const diskon = Number(data.diskon) || 0;
+  const setoran = omset - transfer - diskon;
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === data.id) {
+      const rowIdx = i + 1;
+      sh.getRange(rowIdx, 3).setValue(data.tanggal);
+      sh.getRange(rowIdx, 4).setValue(data.jenisOmset);
+      sh.getRange(rowIdx, 5).setValue(data.korlap || '');
+      sh.getRange(rowIdx, 6).setValue(data.teknisi || '');
+      sh.getRange(rowIdx, 7).setValue(omset);
+      sh.getRange(rowIdx, 8).setValue(transfer);
+      sh.getRange(rowIdx, 9).setValue(diskon);
+      sh.getRange(rowIdx, 10).setValue(setoran);
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'ID transaksi tidak ditemukan' };
+}
+
+function deleteTransaction(id) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_TRANSAKSI);
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'ID transaksi tidak ditemukan' };
+}
+
+function getData(params) {
+  params = params || {};
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_TRANSAKSI);
+  const values = sh.getDataRange().getValues();
+  const workers = getWorkers();
+  const setoranAwalMap = getSetoranAwalMap_();
+
+  const transactions = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (!row[0]) continue;
+    const omset = Number(row[6]) || 0;
+    const transfer = Number(row[7]) || 0;
+    const diskon = Number(row[8]) || 0;
+    const setoran = row[9] !== undefined && row[9] !== '' ? Number(row[9]) : (omset - transfer - diskon);
+
+    transactions.push({
+      id: row[0],
+      timestamp: row[1],
+      tanggal: formatDate_(row[2]),
+      jenisOmset: row[3],
+      korlap: row[4],
+      teknisi: row[5],
+      omset: omset,
+      transfer: transfer,
+      diskon: diskon,
+      setoran: setoran
+    });
+  }
+
+  let filtered = transactions.slice();
+  if (params.startDate) filtered = filtered.filter(function (t) { return t.tanggal >= params.startDate; });
+  if (params.endDate)   filtered = filtered.filter(function (t) { return t.tanggal <= params.endDate; });
+  if (params.worker)    filtered = filtered.filter(function (t) { return t.korlap === params.worker || t.teknisi === params.worker; });
+
+  // Poin 1: Total transfer masuk berasal dari customer di kolom transaksi (Transfer)
+  const totalOmset         = sumBy_(filtered, 'omset');
+  const totalTransferMasuk = sumBy_(filtered, 'transfer');
+
+  const korlapList  = workers.filter(function (w) { return w.peran === 'Korlap'; });
+  const teknisiList = workers.filter(function (w) { return w.peran === 'Teknisi'; });
+
+  const rekapKorlap  = korlapList.map(function (k) { 
+    return buildRekapPekerja_(k.nama, 'Korlap', filtered, setoranAwalMap[k.nama] || 0); 
+  });
+  const rekapTeknisi = teknisiList.map(function (t) { 
+    return buildRekapPekerja_(t.nama, 'Teknisi', filtered, setoranAwalMap[t.nama] || 0); 
+  });
+
+  return {
+    transactions: filtered.sort(function (a, b) { return new Date(b.tanggal) - new Date(a.tanggal); }),
+    workers: workers,
+    summary: {
+      totalOmset: totalOmset,
+      totalTransferMasuk: totalTransferMasuk
+    },
+    rekapKorlap: rekapKorlap,
+    rekapTeknisi: rekapTeknisi
+  };
+}
+
+function buildRekapPekerja_(nama, peran, filtered, setoranAwal) {
+  // Ambil transaksi milik pekerja bersangkutan
+  const trx = filtered.filter(function (t) {
+    if (peran === 'Korlap') return t.korlap === nama && t.jenisOmset === 'Korlap';
+    return t.teknisi === nama && t.jenisOmset === 'Teknisi';
+  });
+
+  const omset = sumBy_(trx, 'omset');
+  const transfer = sumBy_(trx, 'transfer');
+  const diskon = sumBy_(trx, 'diskon');
+  const sumSetoran = sumBy_(trx, 'setoran'); // Total Omset - Transfer - Diskon
+  
+  // Setoran Akhir = (Total Setoran Periode Ini) + (Setoran Sebelumnya)
+  const setoranAkhir = sumSetoran + setoranAwal;
+
+  return {
+    nama: nama,
+    peran: peran,
+    omset: omset,
+    transfer: transfer,
+    diskon: diskon,
+    sumSetoran: sumSetoran,
+    setoranAwal: setoranAwal,
+    setoranAkhir: setoranAkhir,
+    statusTransfer: setoranAkhir >= 0 ? 'Teknisi / Korlap Transfer ke Owner' : 'Owner Transfer ke Teknisi / Korlap'
+  };
+}
+
+function sumBy_(arr, key) {
+  return arr.reduce(function (s, x) { return s + (Number(x[key]) || 0); }, 0);
+}
+
+function formatDate_(d) {
+  if (Object.prototype.toString.call(d) === '[object Date]') {
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return d;
+}
