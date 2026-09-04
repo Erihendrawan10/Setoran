@@ -10,27 +10,24 @@
 <style>
   [v-cloak] { display: none; }
   body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
-  @media print {
-    .no-print { display: none !important; }
-    .printable-card { border: none !important; shadow: none !important; }
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 </style>
 </head>
 <body class="bg-slate-100 min-h-screen pb-16">
 
 <div id="app" v-cloak class="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-6">
 
-  <!-- ============ HEADER ============ -->
-  <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+  <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
     <div class="flex items-center gap-2">
       <div>
         <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
-        <p class="text-sm text-slate-500">Pencatatan Omset, Transfer, Diskon, dan Setoran Pekerja</p>
+        <p class="text-sm text-slate-500">Pencatatan omset & setoran pekerja — tersinkron ke Google Sheets</p>
       </div>
       <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.0</span>
     </div>
     <div class="flex items-center gap-2">
-      <button @click="checkConnection" :title="connectionStatus === 'online' ? 'Terhubung' : 'Terputus'"
+      <button @click="checkConnection" :title="connectionStatus === 'online' ? 'Terhubung ke Apps Script' : connectionStatus === 'checking' ? 'Mengecek koneksi...' : 'Tidak terhubung — klik untuk cek ulang'"
         class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
         :class="{
           'bg-emerald-50 border-emerald-300 text-emerald-700': connectionStatus === 'online',
@@ -44,19 +41,21 @@
         }"></span>
         {{ connectionStatus === 'online' ? 'Terhubung' : connectionStatus === 'checking' ? 'Mengecek...' : 'Terputus' }}
       </button>
-      <button @click="showSettings = true" class="px-3 py-2 rounded-lg bg-white border text-sm font-medium hover:bg-slate-50">⚙️ Pengaturan</button>
-      <button @click="showConfig = true" class="px-3 py-2 rounded-lg bg-white border text-sm font-medium hover:bg-slate-50">🔗 Koneksi</button>
+      <button @click="showSettings = true" class="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm font-medium hover:bg-slate-50">⚙️ Pengaturan</button>
+      <button @click="showConfig = true" class="px-3 py-2 rounded-lg bg-white border border-slate-300 text-sm font-medium hover:bg-slate-50">🔗 Koneksi</button>
     </div>
   </header>
 
-  <!-- ============ TOAST ============ -->
-  <div v-if="toast.show" class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm no-print"
+  <div v-if="!scriptUrl" class="bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg p-3">
+    URL Apps Script belum diatur. Klik tombol <b>🔗 Koneksi</b> untuk menempelkan URL Web App Anda.
+  </div>
+
+  <div v-if="toast.show" class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm"
        :class="toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'">
     {{ toast.message }}
   </div>
 
-  <!-- ============ RINGKASAN ============ -->
-  <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 no-print">
+  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
     <div class="bg-white rounded-xl shadow p-4 border-l-4 border-blue-500">
       <p class="text-xs text-slate-500 uppercase tracking-wide">Total Omset</p>
       <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalOmset) }}</p>
@@ -65,10 +64,13 @@
       <p class="text-xs text-slate-500 uppercase tracking-wide">Total Transfer Masuk (Customer)</p>
       <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalTransferMasuk) }}</p>
     </div>
+    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-purple-500">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Profit Bersih Owner</p>
+      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalOwnerShare) }}</p>
+    </div>
   </section>
 
-  <!-- ============ FILTER ============ -->
-  <section class="bg-white rounded-xl shadow p-4 no-print">
+  <section class="bg-white rounded-xl shadow p-4">
     <h2 class="font-semibold text-slate-700 mb-3">🔍 Filter Data</h2>
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
       <div>
@@ -93,10 +95,9 @@
     </div>
   </section>
 
-  <!-- ============ FORM CATAT TRANSAKSI ============ -->
-  <section class="bg-white rounded-xl shadow p-4 no-print">
+  <section class="bg-white rounded-xl shadow p-4">
     <div class="flex justify-between items-center mb-3">
-      <h2 class="font-semibold text-slate-700">{{ isEditing ? '✏️ Edit Transaksi' : '➕ Catat Transaksi' }}</h2>
+      <h2 class="font-semibold text-slate-700">{{ isEditing ? '✏️ Edit Transaksi' : '➕ Catat Transaksi Baru' }}</h2>
       <button @click="toggleForm" class="text-sm text-blue-600">{{ showForm ? 'Tutup' : 'Buka Form' }}</button>
     </div>
     <form v-if="showForm" @submit.prevent="submitTransaction" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -105,13 +106,13 @@
         <input type="date" v-model="form.tanggal" required class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
       <div>
-        <label class="text-xs text-slate-500">Status (Korlap/Teknisi)</label>
+        <label class="text-xs text-slate-500">Status Pekerja</label>
         <select v-model="form.jenisOmset" class="w-full border rounded-lg px-3 py-2 text-sm">
           <option value="Korlap">Korlap</option>
           <option value="Teknisi">Teknisi</option>
         </select>
       </div>
-      <div v-if="form.jenisOmset === 'Korlap'">
+      <div>
         <label class="text-xs text-slate-500">Korlap</label>
         <select v-model="form.korlap" required class="w-full border rounded-lg px-3 py-2 text-sm">
           <option value="" disabled>Pilih Korlap</option>
@@ -127,142 +128,158 @@
       </div>
       <div>
         <label class="text-xs text-slate-500">Omset (Rp)</label>
-        <input type="number" v-model.number="form.omset" required min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <input type="number" v-model.number="form.omset" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
       <div>
         <label class="text-xs text-slate-500">Transfer (Rp)</label>
-        <input type="number" v-model.number="form.transfer" required min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <input type="number" v-model.number="form.transfer" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
       <div>
         <label class="text-xs text-slate-500">Diskon (Rp)</label>
-        <input type="number" v-model.number="form.diskon" required min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <input type="number" v-model.number="form.diskon" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
-      <div class="sm:col-span-3 bg-slate-50 p-2 rounded border text-xs text-slate-600">
-        Rumus Setoran = Omset ({{ formatRupiah(form.omset) }}) - Transfer ({{ formatRupiah(form.transfer) }}) - Diskon ({{ formatRupiah(form.diskon) }}) = <b>{{ formatRupiah(form.omset - form.transfer - form.diskon) }}</b>
+      <div class="sm:col-span-2 bg-slate-50 p-2 rounded-lg border flex items-center justify-between">
+        <span class="text-xs font-medium text-slate-600">Setoran (Omset - Transfer - Diskon):</span>
+        <span class="text-sm font-bold text-slate-800">{{ formatRupiah(hitungSetoranForm) }}</span>
       </div>
+
       <div class="sm:col-span-3 flex gap-2">
         <button type="submit" :disabled="saving" class="bg-emerald-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
-          {{ saving ? 'Menyimpan...' : (isEditing ? 'Simpan Perubahan' : 'Simpan Transaksi') }}
+          {{ saving ? 'Menyimpan...' : (isEditing ? 'Update Transaksi' : 'Simpan Transaksi') }}
         </button>
-        <button v-if="isEditing" type="button" @click="cancelEdit" class="bg-slate-200 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-300">
-          Batal
+        <button v-if="isEditing" type="button" @click="resetForm" class="bg-slate-200 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-300">
+          Batal Edit
         </button>
       </div>
     </form>
   </section>
 
-  <!-- ============ REKAP CARD KORLAP ============ -->
   <section>
-    <h2 class="font-semibold text-slate-700 mb-3 no-print">👷 Rekap Korlap</h2>
+    <h2 class="font-semibold text-slate-700 mb-3">👷 Rekap Individu — Korlap</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="k in rekapKorlap" :key="k.nama" class="printable-card bg-white rounded-xl shadow p-5 relative border">
-        <!-- HEADER KARTU DENGAN IDENTITAS PERUSAHAAN -->
+        
         <div class="border-b pb-3 mb-3 text-center">
-          <p class="font-bold text-base text-slate-800">Kurasin toren indonesia</p>
-          <p class="text-xs text-slate-500">Jl amanah 1 no 54 Pd Petir - Depok</p>
-          <div v-if="filter.startDate || filter.endDate" class="text-[11px] font-medium text-blue-600 mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded">
-            Periode: {{ filter.startDate || '...' }} s/d {{ filter.endDate || '...' }}
+          <h3 class="font-bold text-slate-800 text-lg uppercase tracking-wide">Kurasin Toren Indonesia</h3>
+          <p class="text-[11px] text-slate-500 leading-tight">Jl. Amanah 1 No. 54, Pd. Petir - Depok</p>
+          <p v-if="filter.startDate || filter.endDate" class="text-[11px] font-semibold text-blue-600 mt-1">
+            Periode: {{ filter.startDate || 'Awal' }} s/d {{ filter.endDate || 'Selesai' }}
+          </p>
+        </div>
+
+        <div class="flex justify-between items-start mb-3">
+          <div>
+            <p class="font-bold text-slate-800 text-base">{{ k.nama }}</p>
+            <p class="text-xs text-slate-400">Korlap</p>
           </div>
         </div>
 
-        <div class="flex justify-between items-center mb-3 bg-slate-50 p-2 rounded">
-          <p class="font-bold text-slate-800">{{ k.nama }}</p>
-          <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">Korlap</span>
-        </div>
-
-        <div class="space-y-1.5 text-sm text-slate-700">
-          <div class="flex justify-between"><span>Omset</span><b>{{ formatRupiah(k.omset) }}</b></div>
-          <div class="flex justify-between text-slate-500"><span>Transfer</span><span>{{ formatRupiah(k.transfer) }}</span></div>
-          <div class="flex justify-between text-slate-500"><span>Diskon</span><span>{{ formatRupiah(k.diskon) }}</span></div>
-          <div class="flex justify-between font-semibold border-t pt-1"><span>Setoran Periode Ini</span><span>{{ formatRupiah(k.sumSetoran) }}</span></div>
-          <div class="flex justify-between text-xs" :class="k.setoranAwal >= 0 ? 'text-emerald-600' : 'text-red-600'">
-            <span>Setoran Sebelumnya</span>
-            <span>{{ formatRupiah(k.setoranAwal) }}</span>
+        <div class="space-y-1.5 text-sm text-slate-600">
+          <div class="flex justify-between"><span>Omset Sendiri</span><b>{{ formatRupiah(k.omsetSendiri) }}</b></div>
+          <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(k.totalSetoranPeriodeIni) }}</b></div>
+          <div class="flex justify-between text-xs text-slate-500"><span>Setoran Sebelumnya</span><span>{{ formatRupiah(k.setoranSebelumnya) }}</span></div>
+          <hr class="my-1">
+          <div class="flex justify-between font-bold text-slate-800">
+            <span>Total Setoran Akhir</span>
+            <span :class="k.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
           </div>
-          <div class="flex justify-between font-bold text-base border-t-2 pt-1.5 mt-1" :class="k.setoranAkhir >= 0 ? 'text-emerald-700' : 'text-red-600'">
-            <span>Total Setoran</span>
-            <span>{{ formatRupiah(k.setoranAkhir) }}</span>
+          <p class="text-[11px] italic" :class="k.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">
+            *{{ k.totalSetoranAkhir >= 0 ? 'Korlap transfer ke Owner' : 'Owner transfer ke Korlap' }}
+          </p>
+
+          <div class="no-export pt-2">
+            <label class="text-xs text-slate-500 block mb-1">Nominal Sudah Dibayar:</label>
+            <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded-lg px-2 py-1 text-sm mb-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-medium">Status / Sisa Sisa:</span>
+              <span class="font-bold" :class="hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'text-emerald-600' : 'text-amber-600'">
+                {{ hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(k.totalSetoranAkhir, k.sudahDibayar)) }}
+              </span>
+            </div>
           </div>
-          <p class="text-[11px] italic mt-1 text-slate-500 text-right">{{ k.statusTransfer }}</p>
         </div>
 
-        <!-- REKENING BCA -->
-        <div class="mt-4 pt-2 border-t text-center text-xs text-slate-600 bg-blue-50/50 rounded py-1.5">
-          <p class="font-semibold text-slate-800">BCA 4731824481</p>
-          <p class="text-[11px]">Eri H</p>
+        <div class="mt-4 pt-3 border-t text-center bg-slate-50 -mx-5 -mb-5 p-3 rounded-b-xl">
+          <p class="text-xs font-semibold text-slate-700">Bank BCA: <span class="font-bold text-blue-700">4731824481</span></p>
+          <p class="text-xs text-slate-500 font-medium">a.n. Eri H</p>
         </div>
 
-        <!-- TOMBOL AKSI CARD -->
-        <div class="no-print mt-3 flex gap-1.5">
-          <button @click="openBayarModal(k)" class="flex-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 rounded-lg py-1.5 font-medium">💵 Input Bayar</button>
-          <button @click="exportCard($event)" class="text-xs bg-slate-100 hover:bg-slate-200 border rounded-lg px-2.5 py-1.5 font-medium">🖼️ Gambar</button>
-          <button @click="printCard($event)" class="text-xs bg-slate-100 hover:bg-slate-200 border rounded-lg px-2.5 py-1.5 font-medium">🖨️ Print</button>
+        <div class="no-export mt-4">
+          <button @click="exportCard($event)" class="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg py-2 font-medium border">🖼️ Print / Export Gambar</button>
         </div>
       </div>
+      <p v-if="rekapKorlap.length === 0" class="text-sm text-slate-400 col-span-full">Belum ada data Korlap.</p>
     </div>
   </section>
 
-  <!-- ============ REKAP CARD TEKNISI ============ -->
   <section>
-    <h2 class="font-semibold text-slate-700 mb-3 no-print">🛠️ Rekap Teknisi</h2>
+    <h2 class="font-semibold text-slate-700 mb-3">🛠️ Rekap Individu — Teknisi</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="t in rekapTeknisi" :key="t.nama" class="printable-card bg-white rounded-xl shadow p-5 relative border">
-        <!-- HEADER KARTU DENGAN IDENTITAS PERUSAHAAN -->
+        
         <div class="border-b pb-3 mb-3 text-center">
-          <p class="font-bold text-base text-slate-800">Kurasin toren indonesia</p>
-          <p class="text-xs text-slate-500">Jl amanah 1 no 54 Pd Petir - Depok</p>
-          <div v-if="filter.startDate || filter.endDate" class="text-[11px] font-medium text-blue-600 mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded">
-            Periode: {{ filter.startDate || '...' }} s/d {{ filter.endDate || '...' }}
+          <h3 class="font-bold text-slate-800 text-lg uppercase tracking-wide">Kurasin Toren Indonesia</h3>
+          <p class="text-[11px] text-slate-500 leading-tight">Jl. Amanah 1 No. 54, Pd. Petir - Depok</p>
+          <p v-if="filter.startDate || filter.endDate" class="text-[11px] font-semibold text-blue-600 mt-1">
+            Periode: {{ filter.startDate || 'Awal' }} s/d {{ filter.endDate || 'Selesai' }}
+          </p>
+        </div>
+
+        <div class="flex justify-between items-start mb-3">
+          <div>
+            <p class="font-bold text-slate-800 text-base">{{ t.nama }}</p>
+            <p class="text-xs text-slate-400">Teknisi</p>
           </div>
         </div>
 
-        <div class="flex justify-between items-center mb-3 bg-slate-50 p-2 rounded">
-          <p class="font-bold text-slate-800">{{ t.nama }}</p>
-          <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">Teknisi</span>
-        </div>
-
-        <div class="space-y-1.5 text-sm text-slate-700">
-          <div class="flex justify-between"><span>Omset</span><b>{{ formatRupiah(t.omset) }}</b></div>
-          <div class="flex justify-between text-slate-500"><span>Transfer</span><span>{{ formatRupiah(t.transfer) }}</span></div>
-          <div class="flex justify-between text-slate-500"><span>Diskon</span><span>{{ formatRupiah(t.diskon) }}</span></div>
-          <div class="flex justify-between font-semibold border-t pt-1"><span>Setoran Periode Ini</span><span>{{ formatRupiah(t.sumSetoran) }}</span></div>
-          <div class="flex justify-between text-xs" :class="t.setoranAwal >= 0 ? 'text-emerald-600' : 'text-red-600'">
-            <span>Setoran Sebelumnya</span>
-            <span>{{ formatRupiah(t.setoranAwal) }}</span>
+        <div class="space-y-1.5 text-sm text-slate-600">
+          <div class="flex justify-between"><span>Total Omset</span><b>{{ formatRupiah(t.totalOmset) }}</b></div>
+          <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(t.totalSetoranPeriodeIni) }}</b></div>
+          <div class="flex justify-between text-xs text-slate-500"><span>Setoran Sebelumnya</span><span>{{ formatRupiah(t.setoranSebelumnya) }}</span></div>
+          <hr class="my-1">
+          <div class="flex justify-between font-bold text-slate-800">
+            <span>Total Setoran Akhir</span>
+            <span :class="t.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
           </div>
-          <div class="flex justify-between font-bold text-base border-t-2 pt-1.5 mt-1" :class="t.setoranAkhir >= 0 ? 'text-emerald-700' : 'text-red-600'">
-            <span>Total Setoran</span>
-            <span>{{ formatRupiah(t.setoranAkhir) }}</span>
+          <p class="text-[11px] italic" :class="t.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">
+            *{{ t.totalSetoranAkhir >= 0 ? 'Teknisi transfer ke Owner' : 'Owner transfer ke Teknisi' }}
+          </p>
+
+          <div class="no-export pt-2">
+            <label class="text-xs text-slate-500 block mb-1">Nominal Sudah Dibayar:</label>
+            <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded-lg px-2 py-1 text-sm mb-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-medium">Status / Sisa Sisa:</span>
+              <span class="font-bold" :class="hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'text-emerald-600' : 'text-amber-600'">
+                {{ hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(t.totalSetoranAkhir, t.sudahDibayar)) }}
+              </span>
+            </div>
           </div>
-          <p class="text-[11px] italic mt-1 text-slate-500 text-right">{{ t.statusTransfer }}</p>
         </div>
 
-        <!-- REKENING BCA -->
-        <div class="mt-4 pt-2 border-t text-center text-xs text-slate-600 bg-blue-50/50 rounded py-1.5">
-          <p class="font-semibold text-slate-800">BCA 4731824481</p>
-          <p class="text-[11px]">Eri H</p>
+        <div class="mt-4 pt-3 border-t text-center bg-slate-50 -mx-5 -mb-5 p-3 rounded-b-xl">
+          <p class="text-xs font-semibold text-slate-700">Bank BCA: <span class="font-bold text-blue-700">4731824481</span></p>
+          <p class="text-xs text-slate-500 font-medium">a.n. Eri H</p>
         </div>
 
-        <!-- TOMBOL AKSI CARD -->
-        <div class="no-print mt-3 flex gap-1.5">
-          <button @click="openBayarModal(t)" class="flex-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 rounded-lg py-1.5 font-medium">💵 Input Bayar</button>
-          <button @click="exportCard($event)" class="text-xs bg-slate-100 hover:bg-slate-200 border rounded-lg px-2.5 py-1.5 font-medium">🖼️ Gambar</button>
-          <button @click="printCard($event)" class="text-xs bg-slate-100 hover:bg-slate-200 border rounded-lg px-2.5 py-1.5 font-medium">🖨️ Print</button>
+        <div class="no-export mt-4">
+          <button @click="exportCard($event)" class="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg py-2 font-medium border">🖼️ Print / Export Gambar</button>
         </div>
       </div>
+      <p v-if="rekapTeknisi.length === 0" class="text-sm text-slate-400 col-span-full">Belum ada data Teknisi.</p>
     </div>
   </section>
 
-  <!-- ============ TABEL TRANSAKSI ============ -->
-  <section class="bg-white rounded-xl shadow p-4 no-print">
+  <section class="bg-white rounded-xl shadow p-4">
     <h2 class="font-semibold text-slate-700 mb-3">📋 Daftar Transaksi ({{ transactions.length }})</h2>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-slate-500 border-b">
             <th class="py-2 pr-3">Tanggal</th>
-            <th class="py-2 pr-3">Status</th>
-            <th class="py-2 pr-3">Korlap/Teknisi</th>
+            <th class="py-2 pr-3">Peran</th>
+            <th class="py-2 pr-3">Korlap</th>
+            <th class="py-2 pr-3">Teknisi</th>
             <th class="py-2 pr-3 text-right">Omset</th>
             <th class="py-2 pr-3 text-right">Transfer</th>
             <th class="py-2 pr-3 text-right">Diskon</th>
@@ -273,56 +290,30 @@
         <tbody>
           <tr v-for="t in transactions" :key="t.id" class="border-b last:border-0 hover:bg-slate-50">
             <td class="py-2 pr-3 whitespace-nowrap">{{ t.tanggal }}</td>
-            <td class="py-2 pr-3"><span class="text-xs px-2 py-0.5 rounded font-medium bg-slate-100 text-slate-700">{{ t.jenisOmset }}</span></td>
-            <td class="py-2 pr-3 font-medium">{{ t.jenisOmset === 'Korlap' ? t.korlap : t.teknisi }}</td>
-            <td class="py-2 pr-3 text-right">{{ formatRupiah(t.omset) }}</td>
-            <td class="py-2 pr-3 text-right text-emerald-600">{{ formatRupiah(t.transfer) }}</td>
+            <td class="py-2 pr-3">{{ t.jenisOmset }}</td>
+            <td class="py-2 pr-3">{{ t.korlap }}</td>
+            <td class="py-2 pr-3">{{ t.teknisi || '-' }}</td>
+            <td class="py-2 pr-3 text-right font-medium">{{ formatRupiah(t.omset) }}</td>
+            <td class="py-2 pr-3 text-right text-blue-600">{{ formatRupiah(t.transfer) }}</td>
             <td class="py-2 pr-3 text-right text-amber-600">{{ formatRupiah(t.diskon) }}</td>
-            <td class="py-2 pr-3 text-right font-bold">{{ formatRupiah(t.setoran) }}</td>
+            <td class="py-2 pr-3 text-right font-bold text-slate-800">{{ formatRupiah(t.setoran) }}</td>
             <td class="py-2 pr-3 text-center whitespace-nowrap">
-              <button @click="editTransaction(t)" class="text-xs text-blue-600 hover:underline mr-3 font-medium">Edit</button>
-              <button @click="removeTransaction(t)" class="text-xs text-red-500 hover:underline font-medium">Hapus</button>
+              <button @click="editTransaction(t)" class="text-xs text-blue-600 hover:underline mr-3">Edit</button>
+              <button @click="removeTransaction(t)" class="text-xs text-red-500 hover:underline">Hapus</button>
             </td>
           </tr>
           <tr v-if="transactions.length === 0">
-            <td colspan="8" class="py-6 text-center text-slate-400">Belum ada transaksi pada filter ini.</td>
+            <td colspan="9" class="py-6 text-center text-slate-400">Belum ada transaksi pada rentang/filter ini.</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- ============ MODAL INPUT NOMINAL DIBAYAR ============ -->
-  <div v-if="showBayarModal" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 no-print">
-    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-md">
-      <h3 class="font-semibold text-slate-800 mb-1">💵 Input Nominal Dibayar</h3>
-      <p class="text-xs text-slate-500 mb-3">Pekerja: <b>{{ selectedPekerja.nama }}</b></p>
-      
-      <div class="space-y-2 text-sm bg-slate-50 p-3 rounded mb-4 border">
-        <div class="flex justify-between"><span>Total Setoran Tagihan:</span><b>{{ formatRupiah(selectedPekerja.setoranAkhir) }}</b></div>
-      </div>
-
-      <div class="mb-4">
-        <label class="text-xs text-slate-500 block mb-1">Nominal yang Sudah Dibayar (Rp)</label>
-        <input type="number" v-model.number="bayarForm.nominal" class="w-full border rounded-lg px-3 py-2 text-sm font-semibold" placeholder="0">
-      </div>
-
-      <div class="text-xs space-y-1 mb-4 p-2 rounded" :class="sisaSetoran === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'">
-        <p><b>Status:</b> {{ sisaSetoran === 0 ? 'LUNAS' : 'BELUM LUNAS' }}</p>
-        <p v-if="sisaSetoran !== 0"><b>Sisa Masuk Setoran Selanjutnya:</b> {{ formatRupiah(sisaSetoran) }}</p>
-      </div>
-
-      <div class="flex justify-end gap-2">
-        <button @click="showBayarModal = false" class="px-3 py-2 text-sm rounded-lg border">Batal</button>
-        <button @click="savePembayaran" class="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700">Simpan Setoran</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ MODAL KONEKSI ============ -->
-  <div v-if="showConfig" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 no-print">
+  <div v-if="showConfig" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-md">
       <h3 class="font-semibold text-slate-800 mb-2">🔗 Koneksi Google Apps Script</h3>
+      <p class="text-xs text-slate-500 mb-3">Tempelkan URL Web App hasil deploy Apps Script Anda di sini.</p>
       <input type="text" v-model="tempUrl" placeholder="https://script.google.com/macros/s/xxx/exec" class="w-full border rounded-lg px-3 py-2 text-sm mb-3">
       <div class="flex justify-end gap-2">
         <button @click="showConfig = false" class="px-3 py-2 text-sm rounded-lg border">Batal</button>
@@ -331,9 +322,30 @@
     </div>
   </div>
 
-  <!-- ============ MODAL PENGATURAN ============ -->
-  <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 no-print">
-    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-lg">
+  <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-lg max-h-[85vh] overflow-y-auto">
+      <h3 class="font-semibold text-slate-800 mb-3">⚙️ Pengaturan Bagi Hasil</h3>
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div>
+          <label class="text-xs text-slate-500">Potongan Teknisi (%)</label>
+          <input type="number" v-model.number="settingsForm.PotonganTeknisi" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Owner dari Potongan (%)</label>
+          <input type="number" v-model.number="settingsForm.OwnerDariTeknisi" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Komisi Korlap dari Teknisi (%)</label>
+          <input type="number" v-model.number="settingsForm.KomisiKorlapDariTeknisi" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Persen Korlap dari Omset Sendiri (%)</label>
+          <input type="number" v-model.number="settingsForm.PersenKorlapDariOmsetSendiri" class="w-full border rounded-lg px-3 py-2 text-sm">
+        </div>
+      </div>
+      <button @click="saveSettingsForm" class="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium mb-5">Simpan Pengaturan</button>
+
+      <hr class="mb-4">
       <h3 class="font-semibold text-slate-800 mb-3">👤 Tambah Pekerja</h3>
       <form @submit.prevent="submitWorker" class="grid grid-cols-1 gap-3">
         <input type="text" v-model="workerForm.nama" placeholder="Nama pekerja" required class="w-full border rounded-lg px-3 py-2 text-sm">
@@ -341,8 +353,13 @@
           <option value="Korlap">Korlap</option>
           <option value="Teknisi">Teknisi</option>
         </select>
+        <select v-if="workerForm.peran === 'Teknisi'" v-model="workerForm.korlapInduk" class="w-full border rounded-lg px-3 py-2 text-sm">
+          <option value="">Tanpa Korlap Induk</option>
+          <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
+        </select>
         <button type="submit" class="bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium">Tambah Pekerja</button>
       </form>
+
       <div class="flex justify-end mt-4">
         <button @click="showSettings = false" class="px-3 py-2 text-sm rounded-lg border">Tutup</button>
       </div>
@@ -363,22 +380,19 @@ createApp({
       showConfig: false,
       showSettings: false,
       showForm: false,
-      showBayarModal: false,
       isEditing: false,
-      editingId: null,
       saving: false,
+      loading: false,
       toast: { show: false, message: '', type: 'success' },
 
       filter: { startDate: '', endDate: '', worker: '' },
-      form: { tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 },
-      workerForm: { nama: '', peran: 'Korlap' },
-
-      selectedPekerja: {},
-      bayarForm: { nominal: 0 },
+      form: { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 },
+      settingsForm: { PotonganTeknisi: 55, OwnerDariTeknisi: 50, KomisiKorlapDariTeknisi: 5, PersenKorlapDariOmsetSendiri: 50 },
+      workerForm: { nama: '', peran: 'Korlap', korlapInduk: '' },
 
       transactions: [],
       workers: [],
-      summary: { totalOmset: 0, totalTransferMasuk: 0 },
+      summary: { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0 },
       rekapKorlap: [],
       rekapTeknisi: []
     };
@@ -386,10 +400,11 @@ createApp({
   computed: {
     korlapOptions() { return this.workers.filter(w => w.peran === 'Korlap'); },
     teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); },
-    sisaSetoran() {
-      const tot = Number(this.selectedPekerja.setoranAkhir) || 0;
-      const bayar = Number(this.bayarForm.nominal) || 0;
-      return tot - bayar;
+    hitungSetoranForm() {
+      const omset = Number(this.form.omset) || 0;
+      const transfer = Number(this.form.transfer) || 0;
+      const diskon = Number(this.form.diskon) || 0;
+      return omset - transfer - diskon;
     }
   },
   mounted() {
@@ -402,7 +417,7 @@ createApp({
     checkConnection() {
       if (!this.scriptUrl) { this.connectionStatus = 'offline'; return; }
       this.connectionStatus = 'checking';
-      this.apiGet('getWorkers')
+      this.apiGet('getSettings')
         .then(res => { this.connectionStatus = res && !res.error ? 'online' : 'offline'; })
         .catch(() => { this.connectionStatus = 'offline'; });
     },
@@ -423,11 +438,12 @@ createApp({
         this.loadData();
       }
     },
-    toggleForm() {
-      this.showForm = !this.showForm;
-      if (!this.showForm) this.cancelEdit();
+    hitungSisa(totalSetoranAkhir, sudahDibayar) {
+      const sisa = totalSetoranAkhir - (Number(sudahDibayar) || 0);
+      return Math.max(0, sisa);
     },
 
+    /* --------- API HELPERS --------- */
     apiGet(action, params = {}) {
       const qs = new URLSearchParams({ action, ...params }).toString();
       return fetch(`${this.scriptUrl}?${qs}`).then(r => r.json());
@@ -440,8 +456,10 @@ createApp({
       }).then(r => r.json());
     },
 
+    /* --------- LOAD DATA --------- */
     loadData() {
       if (!this.scriptUrl) { this.showConfig = true; return; }
+      this.loading = true;
       this.apiGet('getData', {
         startDate: this.filter.startDate,
         endDate: this.filter.endDate,
@@ -453,48 +471,42 @@ createApp({
         this.summary = res.summary;
         this.rekapKorlap = res.rekapKorlap;
         this.rekapTeknisi = res.rekapTeknisi;
-      }).catch(() => this.showToast('Gagal memuat data', 'error'));
+        this.settingsForm = { ...this.settingsForm, ...res.settings };
+      }).catch(() => this.showToast('Gagal memuat data. Cek URL Apps Script.', 'error'))
+        .finally(() => this.loading = false);
     },
     resetFilter() {
       this.filter = { startDate: '', endDate: '', worker: '' };
       this.loadData();
     },
 
+    /* --------- FORM & TRANSAKSI --------- */
+    toggleForm() {
+      this.showForm = !this.showForm;
+      if (!this.showForm) this.resetForm();
+    },
+    resetForm() {
+      this.isEditing = false;
+      this.form = { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 };
+    },
+    editTransaction(t) {
+      this.isEditing = true;
+      this.showForm = true;
+      this.form = { ...t };
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
     submitTransaction() {
       this.saving = true;
-      const action = this.isEditing ? 'updateTransaction' : 'saveTransaction';
-      const payload = this.isEditing ? { data: { ...this.form, id: this.editingId } } : { data: this.form };
-
-      this.apiPost(action, payload).then(res => {
-        if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.showToast(this.isEditing ? 'Transaksi diperbarui' : 'Transaksi disimpan');
-        this.cancelEdit();
+      this.apiPost('saveTransaction', { data: this.form }).then(res => {
+        if (res.error || res.success === false) { this.showToast(res.error || 'Gagal menyimpan', 'error'); return; }
+        this.showToast(this.isEditing ? 'Transaksi berhasil diperbarui' : 'Transaksi berhasil disimpan');
+        this.resetForm();
         this.loadData();
       }).catch(() => this.showToast('Gagal menyimpan transaksi', 'error'))
         .finally(() => this.saving = false);
     },
-    editTransaction(t) {
-      this.isEditing = true;
-      this.editingId = t.id;
-      this.showForm = true;
-      this.form = {
-        tanggal: t.tanggal,
-        jenisOmset: t.jenisOmset,
-        korlap: t.korlap,
-        teknisi: t.teknisi,
-        omset: t.omset,
-        transfer: t.transfer,
-        diskon: t.diskon
-      };
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    },
-    cancelEdit() {
-      this.isEditing = false;
-      this.editingId = null;
-      this.form = { tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 };
-    },
     removeTransaction(t) {
-      if (!confirm(`Hapus transaksi tanggal ${t.tanggal}?`)) return;
+      if (!confirm(`Hapus transaksi tanggal ${t.tanggal} senilai ${this.formatRupiah(t.omset)}?`)) return;
       this.apiPost('deleteTransaction', { id: t.id }).then(res => {
         if (res.error) { this.showToast(res.error, 'error'); return; }
         this.showToast('Transaksi dihapus');
@@ -502,70 +514,38 @@ createApp({
       });
     },
 
-    openBayarModal(pekerja) {
-      this.selectedPekerja = pekerja;
-      this.bayarForm.nominal = pekerja.setoranAkhir;
-      this.showBayarModal = true;
-    },
-    savePembayaran() {
-      const sisa = this.sisaSetoran;
-      this.apiPost('saveSetoranAwal', {
-        data: {
-          nama: this.selectedPekerja.nama,
-          nominal: sisa
-        }
-      }).then(res => {
+    /* --------- PENGATURAN & PEKERJA --------- */
+    saveSettingsForm() {
+      this.apiPost('saveSettings', { data: this.settingsForm }).then(res => {
         if (res.error) { this.showToast(res.error, 'error'); return; }
-        this.showToast('Pembayaran berhasil dicatat!');
-        this.showBayarModal = false;
+        this.showToast('Pengaturan bagi hasil disimpan');
         this.loadData();
       });
     },
-
     submitWorker() {
       this.apiPost('saveWorker', { data: this.workerForm }).then(res => {
         if (res.error) { this.showToast(res.error, 'error'); return; }
         this.showToast('Pekerja ditambahkan');
-        this.workerForm = { nama: '', peran: 'Korlap' };
+        this.workerForm = { nama: '', peran: 'Korlap', korlapInduk: '' };
         this.loadData();
       });
     },
 
+    /* --------- EXPORT CARD KE GAMBAR --------- */
     exportCard(event) {
       const card = event.target.closest('.printable-card');
       if (!card) return;
-      const noPrints = card.querySelectorAll('.no-print');
-      noPrints.forEach(el => el.style.display = 'none');
+      
+      const noExportElems = card.querySelectorAll('.no-export');
+      noExportElems.forEach(el => el.style.display = 'none');
 
       html2canvas(card, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-        noPrints.forEach(el => el.style.display = '');
+        noExportElems.forEach(el => el.style.display = '');
         const link = document.createElement('a');
         link.download = `rekap-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       });
-    },
-    printCard(event) {
-      const card = event.target.closest('.printable-card');
-      if (!card) return;
-      const printContents = card.outerHTML;
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Cetak Rekap Card</title>
-            <script src="https://cdn.tailwindcss.com"><\/script>
-            <style>
-              .no-print { display: none !important; }
-              body { padding: 20px; font-family: sans-serif; }
-            </style>
-          </head>
-          <body onload="window.print(); window.close();">
-            <div style="max-width: 400px; margin: auto;">${printContents}</div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
     }
   }
 }).mount('#app');
