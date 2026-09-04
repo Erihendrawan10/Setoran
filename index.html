@@ -17,9 +17,9 @@
   }
   *{box-sizing:border-box;}
   body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);margin:0;color:var(--text);}
-  header.topbar{background:var(--primary);color:#fff;padding:16px 20px;}
+  header.topbar{background:var(--primary);color:#fff;padding:16px 20px;text-align:center;}
   header.topbar h1{margin:0;font-size:18px;}
-  header.topbar p{margin:2px 0 0;font-size:12px;opacity:.9;}
+  header.topbar p{margin:4px 0 0;font-size:12px;opacity:.9;}
   .container{max-width:1150px;margin:0 auto;padding:16px;}
   .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
   .tab-btn{padding:8px 16px;border:none;border-radius:8px;background:#fff;cursor:pointer;font-weight:600;color:var(--muted);}
@@ -57,8 +57,9 @@
   .actions-row{display:flex;gap:6px;flex-wrap:wrap;}
   #receiptWrap{position:fixed;left:-9999px;top:0;}
   .receipt{width:380px;background:#fff;padding:20px;font-family:Arial,sans-serif;border:1px solid #ddd;}
-  .receipt h2{margin:0;font-size:16px;color:#0f766e;}
+  .receipt h2{margin:0;font-size:16px;color:#0f766e;text-align:center;}
   .receipt p{margin:2px 0;font-size:12px;color:#444;}
+  .receipt p.center{text-align:center;}
   .receipt hr{border:none;border-top:1px dashed #ccc;margin:10px 0;}
   .receipt table{width:100%;font-size:12px;}
   .receipt td{padding:4px 0;border:none;}
@@ -73,7 +74,6 @@
 <header class="topbar">
   <h1>Kurasin Toren Indonesia</h1>
   <p>Jl Amanah 1 No 54, Pd Petir - Depok · 082213807278</p>
-  <p>Payroll Komisi Owner &amp; Teknisi/Korlap</p>
 </header>
 
 <div class="container">
@@ -92,13 +92,16 @@
         <div class="field"><label>Nama</label><select id="filterNama"><option value="">Semua Nama</option></select></div>
         <button class="btn" onclick="loadSummary()">Terapkan Filter</button>
         <button class="btn secondary" onclick="resetFilter()">Semua Data</button>
+        <button class="btn secondary" onclick="printRingkasan()">🖼️ Print/Share Ringkasan</button>
       </div>
-      <div class="grid-summary" id="summaryGrid">
-        <div class="empty">Memuat ringkasan...</div>
+      <div id="ringkasanCapture">
+        <div class="grid-summary" id="summaryGrid">
+          <div class="empty">Memuat ringkasan...</div>
+        </div>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardBreakdown">
       <h3>Rincian Setoran per Teknisi/Korlap</h3>
       <div style="overflow-x:auto;">
         <table id="breakdownTable">
@@ -106,10 +109,25 @@
             <tr>
               <th>Nama</th><th>Status</th><th>Omset</th><th>Setoran Kotor</th>
               <th>Komisi Korlap</th><th>Diskon</th><th>Transfer</th>
-              <th>Jml Setoran (Periode)</th><th>Saldo Berjalan</th>
+              <th>Setoran Sebelumnya</th><th>Jml Setoran (Periode)</th><th>Saldo Saat Ini</th>
             </tr>
           </thead>
-          <tbody><tr><td colspan="9" class="empty">Memuat data...</td></tr></tbody>
+          <tbody><tr><td colspan="10" class="empty">Memuat data...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="cardDetailFilter" style="display:none;">
+      <h3>Detail Setoran Sesuai Filter</h3>
+      <div style="overflow-x:auto;">
+        <table id="detailFilterTable">
+          <thead>
+            <tr>
+              <th>Tanggal</th><th>Nama</th><th>Status</th><th>Omset</th><th>Setoran</th>
+              <th>Komisi Korlap</th><th>Diskon</th><th>Transfer</th><th>Jml Setoran</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
         </table>
       </div>
     </div>
@@ -179,13 +197,40 @@
       <div class="field"><label>Transfer (jika ada)</label><input type="number" id="txTransfer" value="0" oninput="hitungPreview()"></div>
       <div class="card" style="background:#f9fafb;padding:10px;font-size:13px;">
         <div>Setoran (<span id="pvPersen">-</span>): <b id="pvSetoran">Rp 0</b></div>
-        <div>Komisi Korlap (5% omset teknisi): <b id="pvKomisi">-</b></div>
+        <div id="pvKomisiRow">Komisi Korlap (5% omset teknisi): <b id="pvKomisi">-</b></div>
         <div>Jumlah Setoran (perkiraan): <b id="pvJumlah">Rp 0</b></div>
         <div class="hint">Setoran sebelumnya (hutang/piutang lama) dihitung otomatis oleh sistem saat disimpan, tidak perlu diisi manual.</div>
       </div>
       <div class="actions-row">
         <button class="btn" onclick="saveTransaksi()">Simpan</button>
         <button class="btn secondary" onclick="closeModal('modalTransaksi')">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KARYAWAN (EDIT) -->
+<div class="modal-bg" id="modalKaryawan">
+  <div class="modal">
+    <h3>Edit Karyawan</h3>
+    <input type="hidden" id="kyId">
+    <div class="form-grid">
+      <div class="field"><label>Nama</label><input id="kyNama"></div>
+      <div class="field">
+        <label>Status</label>
+        <select id="kyStatus">
+          <option value="Teknisi">Teknisi (setor 55%)</option>
+          <option value="Korlap">Korlap (setor 50%)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Saldo Awal</label>
+        <input type="number" id="kySaldoAwal">
+        <div class="hint">Positif = dia masih hutang ke owner, negatif = owner hutang ke dia.</div>
+      </div>
+      <div class="actions-row">
+        <button class="btn" onclick="saveKaryawanEdit()">Simpan</button>
+        <button class="btn secondary" onclick="closeModal('modalKaryawan')">Batal</button>
       </div>
     </div>
   </div>
@@ -204,7 +249,7 @@
 // Jika file ini di-upload ke GitHub Pages / hosting lain, isi dengan URL Web App hasil Deploy Apps Script,
 // contoh: 'https://script.google.com/macros/s/XXXXXXXXXXXX/exec'
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbwfm2iBc2oKWWf30sfM3J_AoRWYb1IWvzSrRde9TyoH43xEJRm37ighIJjBuTYhtNHWPQ/exec'
+  API_URL: ''
 };
 
 function callApi(action, params) {
@@ -250,9 +295,32 @@ function fmtRp(n){
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.style.display='block';
-  setTimeout(()=>t.style.display='none', 2500);
+  setTimeout(()=>t.style.display='none', 3200);
 }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+// Ambil gambar dari sebuah elemen lalu coba share (mobile), fallback download
+function shareOrDownloadElement(el, filename){
+  html2canvas(el, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
+    canvas.toBlob(blob=>{
+      if(!blob) return;
+      const file = new File([blob], filename, {type:'image/png'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title: filename}).catch(()=>{
+          downloadBlob(blob, filename);
+        });
+      } else {
+        downloadBlob(blob, filename);
+      }
+    }, 'image/png');
+  });
+}
+function downloadBlob(blob, filename){
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+}
 
 function populateFilterNama(){
   const sel = document.getElementById('filterNama');
@@ -265,7 +333,7 @@ function populateKaryawanSelect(){
   sel.innerHTML = karyawanList.map(k=>`<option value="${k.id}" data-status="${k.status}">${k.nama} (${k.status})</option>`).join('');
 }
 
-/* ===== DASHBOARD ===== */
+/* ===== DASHBOARD / RINGKASAN ===== */
 function loadSummary(){
   const start = document.getElementById('filterStart').value;
   const end = document.getElementById('filterEnd').value;
@@ -273,8 +341,17 @@ function loadSummary(){
   currentFilter = (start || end || karyawanId) ? {
     start: start || undefined, end: end || undefined, karyawanId: karyawanId || undefined
   } : null;
+
   callApi('getSummary', currentFilter).then(renderSummary).catch(err=>showToast('Error: '+err.message));
   callApi('getSummaryPerKaryawan', currentFilter).then(renderBreakdown).catch(err=>showToast('Error: '+err.message));
+
+  const cardDetail = document.getElementById('cardDetailFilter');
+  if(currentFilter){
+    cardDetail.style.display='block';
+    callApi('getTransaksiList', currentFilter).then(renderDetailFilter).catch(err=>showToast('Error: '+err.message));
+  } else {
+    cardDetail.style.display='none';
+  }
 }
 function resetFilter(){
   document.getElementById('filterStart').value='';
@@ -295,21 +372,70 @@ function renderSummary(s){
 }
 function renderBreakdown(list){
   const body = document.querySelector('#breakdownTable tbody');
-  if(!list.length){ body.innerHTML = '<tr><td colspan="9" class="empty">Tidak ada data</td></tr>'; return; }
+  if(!list.length){ body.innerHTML = '<tr><td colspan="10" class="empty">Tidak ada data</td></tr>'; return; }
   body.innerHTML = list.map(r=>{
+    const isKorlap = r.status === 'Korlap';
     const saldoClass = r.saldoBerjalan < 0 ? 'minus' : (r.saldoBerjalan > 0 ? 'plus' : '');
+    const sblmClass = r.setoranSebelumnya < 0 ? 'minus' : (r.setoranSebelumnya > 0 ? 'plus' : '');
     return `<tr>
       <td>${r.nama}</td>
-      <td><span class="badge ${r.status==='Korlap'?'korlap':'teknisi'}">${r.status}</span></td>
+      <td><span class="badge ${isKorlap?'korlap':'teknisi'}">${r.status}</span></td>
       <td>${fmtRp(r.totalOmset)}</td>
       <td>${fmtRp(r.totalSetoran)}</td>
-      <td>${fmtRp(r.totalKomisi)}</td>
+      <td>${isKorlap ? fmtRp(r.totalKomisi) : '-'}</td>
       <td>${fmtRp(r.totalDiskon)}</td>
       <td>${fmtRp(r.totalTransfer)}</td>
+      <td><b class="${sblmClass}">${fmtRp(r.setoranSebelumnya)}</b></td>
       <td><b>${fmtRp(r.totalJumlahSetoran)}</b></td>
       <td><b class="${saldoClass}">${fmtRp(r.saldoBerjalan)}</b></td>
     </tr>`;
   }).join('');
+}
+function renderDetailFilter(rows){
+  const body = document.querySelector('#detailFilterTable tbody');
+  if(!rows.length){ body.innerHTML='<tr><td colspan="10" class="empty">Tidak ada transaksi sesuai filter</td></tr>'; return; }
+  body.innerHTML = rows.map(r=>{
+    const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID');
+    const isKorlap = r.Status === 'Korlap';
+    const lunas = r.StatusLunas === 'Lunas';
+    return `<tr>
+      <td>${tgl}</td>
+      <td>${r.Nama}</td>
+      <td><span class="badge ${isKorlap?'korlap':'teknisi'}">${r.Status}</span></td>
+      <td>${fmtRp(r.Omset)}</td>
+      <td>${fmtRp(r.Setoran)}</td>
+      <td>${isKorlap ? fmtRp(r.KomisiKorlap) : '-'}</td>
+      <td>${fmtRp(r.Diskon)}</td>
+      <td>${fmtRp(r.Transfer)}</td>
+      <td><b>${fmtRp(r.JumlahSetoran)}</b></td>
+      <td><span class="badge ${lunas?'lunas':'belum'}">${r.StatusLunas}</span></td>
+    </tr>`;
+  }).join('');
+}
+function printRingkasan(){
+  const summaryHtml = document.getElementById('summaryGrid').innerHTML;
+  const breakdownHtml = document.getElementById('breakdownTable').outerHTML;
+  const namaFilter = document.getElementById('filterNama');
+  const namaLabel = namaFilter.value ? namaFilter.options[namaFilter.selectedIndex].textContent : 'Semua Karyawan';
+  const start = document.getElementById('filterStart').value;
+  const end = document.getElementById('filterEnd').value;
+  const periode = (start||end) ? `${start||'...'} s/d ${end||'...'}` : 'Semua Tanggal';
+
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:-9999px;top:0;width:700px;background:#fff;padding:24px;font-family:Arial,sans-serif;';
+  el.innerHTML = `
+    <h2 style="margin:0;color:#0f766e;text-align:center;">Kurasin Toren Indonesia</h2>
+    <p style="text-align:center;font-size:12px;color:#444;margin:4px 0;">Jl Amanah 1 No 54, Pd Petir - Depok · 0822-1380-7278</p>
+    <hr style="border:none;border-top:1px dashed #ccc;margin:14px 0;">
+    <h3 style="margin:0 0 4px;font-size:14px;">Ringkasan Payroll</h3>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">Filter: ${namaLabel} · ${periode}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;">${summaryHtml}</div>
+    <h3 style="margin:0 0 8px;font-size:14px;">Rincian per Karyawan</h3>
+    <div style="font-size:11px;">${breakdownHtml}</div>
+  `;
+  document.body.appendChild(el);
+  shareOrDownloadElement(el, 'Ringkasan_KurasinToren_'+Date.now()+'.png');
+  setTimeout(()=>el.remove(), 3000);
 }
 
 /* ===== KARYAWAN ===== */
@@ -324,7 +450,12 @@ function loadKaryawan(){
         <td><span class="badge ${k.status==='Korlap'?'korlap':'teknisi'}">${k.status}</span></td>
         <td>${(k.persen*100).toFixed(0)}%</td>
         <td>${fmtRp(k.saldoAwal)}</td>
-        <td><button class="btn danger small" onclick="delKaryawan('${k.id}')">Hapus</button></td>
+        <td>
+          <div class="actions-row">
+            <button class="btn secondary small" onclick='editKaryawan(${JSON.stringify(k).replace(/'/g,"&#39;")})'>Edit</button>
+            <button class="btn danger small" onclick="delKaryawan('${k.id}')">Hapus</button>
+          </div>
+        </td>
       </tr>`).join('');
     populateKaryawanSelect();
     populateFilterNama();
@@ -339,6 +470,27 @@ function addKaryawanFn(){
     document.getElementById('karyawanNama').value='';
     document.getElementById('karyawanSaldoAwal').value=0;
     showToast('Karyawan ditambahkan');
+    loadKaryawan();
+  }).catch(err=>showToast('Error: '+err.message));
+}
+function editKaryawan(k){
+  document.getElementById('kyId').value = k.id;
+  document.getElementById('kyNama').value = k.nama;
+  document.getElementById('kyStatus').value = k.status;
+  document.getElementById('kySaldoAwal').value = k.saldoAwal;
+  document.getElementById('modalKaryawan').classList.add('show');
+}
+function saveKaryawanEdit(){
+  const payload = {
+    id: document.getElementById('kyId').value,
+    nama: document.getElementById('kyNama').value.trim(),
+    status: document.getElementById('kyStatus').value,
+    saldoAwal: document.getElementById('kySaldoAwal').value
+  };
+  if(!payload.nama){ showToast('Nama wajib diisi'); return; }
+  callApi('updateKaryawan', payload).then(()=>{
+    closeModal('modalKaryawan');
+    showToast('Karyawan diperbarui');
     loadKaryawan();
   }).catch(err=>showToast('Error: '+err.message));
 }
@@ -357,14 +509,15 @@ function renderTransaksi(rows){
   body.innerHTML = rows.map(r=>{
     const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID');
     const lunas = r.StatusLunas === 'Lunas';
+    const isKorlap = r.Status === 'Korlap';
     return `<tr>
       <td>${tgl}</td>
       <td>${r.Nama}</td>
-      <td><span class="badge ${r.Status==='Korlap'?'korlap':'teknisi'}">${r.Status}</span></td>
+      <td><span class="badge ${isKorlap?'korlap':'teknisi'}">${r.Status}</span></td>
       <td>${fmtRp(r.Omset)}</td>
       <td>${(r.Persentase*100).toFixed(0)}%</td>
       <td>${fmtRp(r.Setoran)}</td>
-      <td>${fmtRp(r.KomisiKorlap)}</td>
+      <td>${isKorlap ? fmtRp(r.KomisiKorlap) : '-'}</td>
       <td>${fmtRp(r.Diskon)}</td>
       <td>${fmtRp(r.Transfer)}</td>
       <td><b>${fmtRp(r.JumlahSetoran)}</b></td>
@@ -374,7 +527,7 @@ function renderTransaksi(rows){
       <td>
         <div class="actions-row">
           <button class="btn secondary small" onclick='editTransaksi(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Edit</button>
-          ${!lunas?`<button class="btn small" style="background:#16a34a;color:#fff;" onclick="lunaskan('${r.KaryawanID}')">Lunas</button>`:''}
+          ${!lunas?`<button class="btn small" style="background:#16a34a;color:#fff;" onclick="lunaskan('${r.KaryawanID}','${r.Nama.replace(/'/g,"&#39;")}')">Tandai Lunas</button>`:''}
           <button class="btn secondary small" onclick='printReceipt(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Print</button>
         </div>
       </td>
@@ -410,14 +563,16 @@ function hitungPreview(){
   const sel = document.getElementById('txKaryawan');
   const opt = sel.options[sel.selectedIndex];
   const status = opt ? opt.dataset.status : 'Teknisi';
-  const persen = status==='Korlap'?0.5:0.55;
+  const isKorlap = status === 'Korlap';
+  const persen = isKorlap?0.5:0.55;
   const omset = Number(document.getElementById('txOmset').value)||0;
   const diskon = Number(document.getElementById('txDiskon').value)||0;
   const transfer = Number(document.getElementById('txTransfer').value)||0;
   const setoran = omset*persen;
   document.getElementById('pvPersen').textContent=(persen*100)+'%';
   document.getElementById('pvSetoran').textContent=fmtRp(setoran);
-  document.getElementById('pvKomisi').textContent = status==='Korlap' ? 'dihitung otomatis saat disimpan' : '-';
+  document.getElementById('pvKomisiRow').style.display = isKorlap ? 'block' : 'none';
+  document.getElementById('pvKomisi').textContent = 'dihitung otomatis saat disimpan';
   document.getElementById('pvJumlah').textContent=fmtRp(setoran-diskon-transfer);
 }
 function saveTransaksi(){
@@ -442,18 +597,40 @@ function saveTransaksi(){
     loadTransaksi();
   }).catch(err=>showToast('Error: '+err.message));
 }
-function lunaskan(karyawanId){
-  if(!confirm('Tandai semua transaksi karyawan ini sebagai lunas?')) return;
-  callApi('tandaiLunas', {karyawanId}).then(()=>{ showToast('Ditandai lunas'); loadTransaksi(); }).catch(err=>showToast('Error: '+err.message));
+function lunaskan(karyawanId, nama){
+  callApi('getSaldo', {karyawanId}).then(saldo=>{
+    const saranNominal = saldo > 0 ? saldo : 0;
+    const nominalStr = prompt(
+      `Nominal yang dibayar/ditransfer untuk ${nama}.\nSisa hutang/piutang saat ini: ${fmtRp(saldo)}\n(Kalau nominal kurang dari sisa, kekurangannya otomatis masuk ke setoran selanjutnya)`,
+      saranNominal
+    );
+    if(nominalStr === null) return;
+    const nominal = Number(nominalStr);
+    if(isNaN(nominal) || nominal <= 0){ showToast('Nominal tidak valid'); return; }
+    callApi('bayarSetoran', {karyawanId, nominal}).then(res=>{
+      if(res.fullySettled){
+        if(res.newBalance < 0){
+          showToast('Lunas! Kelebihan bayar '+fmtRp(Math.abs(res.newBalance))+' jadi hutang owner ke dia.');
+        } else {
+          showToast('Lunas!');
+        }
+      } else {
+        showToast('Terbayar sebagian. Sisa '+fmtRp(res.kurang)+' otomatis masuk ke setoran selanjutnya.');
+      }
+      loadTransaksi();
+      loadSummary();
+    }).catch(err=>showToast('Error: '+err.message));
+  }).catch(err=>showToast('Error: '+err.message));
 }
 
-/* ===== PRINT SEBAGAI GAMBAR ===== */
+/* ===== PRINT / SHARE SEBAGAI GAMBAR (per transaksi) ===== */
 function printReceipt(r){
   const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  const isKorlap = r.Status === 'Korlap';
   document.getElementById('receiptContent').innerHTML = `
     <h2>Kurasin Toren Indonesia</h2>
-    <p>Jl Amanah 1 No 54, Pd Petir - Depok</p>
-    <p>0822-1380-7278</p>
+    <p class="center">Jl Amanah 1 No 54, Pd Petir - Depok</p>
+    <p class="center">0822-1380-7278</p>
     <hr>
     <p><b>Bukti Setoran ${r.Status}</b></p>
     <table>
@@ -461,7 +638,7 @@ function printReceipt(r){
       <tr><td>Tanggal</td><td>: ${tgl}</td></tr>
       <tr><td>Omset</td><td>: ${fmtRp(r.Omset)}</td></tr>
       <tr><td>Setoran (${(r.Persentase*100).toFixed(0)}%)</td><td>: ${fmtRp(r.Setoran)}</td></tr>
-      ${r.Status==='Korlap'?`<tr><td>Komisi Korlap (5%)</td><td>: -${fmtRp(r.KomisiKorlap)}</td></tr>`:''}
+      ${isKorlap?`<tr><td>Komisi Korlap (5%)</td><td>: -${fmtRp(r.KomisiKorlap)}</td></tr>`:''}
       <tr><td>Diskon</td><td>: -${fmtRp(r.Diskon)}</td></tr>
       <tr><td>Transfer</td><td>: -${fmtRp(r.Transfer)}</td></tr>
       <tr><td>Jumlah Setoran</td><td>: ${fmtRp(r.JumlahSetoran)}</td></tr>
@@ -472,12 +649,7 @@ function printReceipt(r){
     <p style="margin-top:10px;color:#888;">Status: ${r.StatusLunas}</p>
   `;
   const node = document.getElementById('receiptContent');
-  html2canvas(node, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
-    const link = document.createElement('a');
-    link.download = 'Setoran_'+r.Nama+'_'+String(r.Tanggal).replace(/[:.]/g,'-')+'.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  });
+  shareOrDownloadElement(node, 'Setoran_'+r.Nama+'_'+String(r.Tanggal).replace(/[:.]/g,'-')+'.png');
 }
 
 /* INIT */
