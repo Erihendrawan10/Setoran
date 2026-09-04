@@ -2,368 +2,313 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Keuangan Operasional</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
   [v-cloak] { display: none !important; }
-  body { font-family: 'Segoe UI', Roboto, -apple-system, sans-serif; }
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 </style>
 </head>
-<body class="bg-slate-100 min-h-screen pb-16">
+<body class="bg-gray-100 min-h-screen pb-12">
 
-<div id="app" v-cloak class="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-6">
+<div id="app" v-cloak class="max-w-6xl mx-auto px-4 py-6 space-y-6">
 
   <!-- HEADER -->
-  <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-    <div class="flex items-center gap-2">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
-        <p class="text-sm text-slate-500">Pencatatan omset & setoran pekerja — tersinkron ke Google Sheets</p>
-      </div>
-      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v9</span>
+  <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
+    <div>
+      <h1 class="text-xl font-bold text-gray-800">Keuangan Operasional</h1>
+      <p class="text-xs text-gray-500">Pencatatan omset & setoran pekerja</p>
     </div>
-    <div class="flex items-center gap-2">
-      <button @click="checkConnection" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+      <button @click="checkConnection" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2"
         :class="{
-          'bg-emerald-50 border-emerald-300 text-emerald-700': connectionStatus === 'online',
+          'bg-green-50 border-green-300 text-green-700': connectionStatus === 'online',
           'bg-red-50 border-red-300 text-red-700': connectionStatus === 'offline',
-          'bg-slate-50 border-slate-300 text-slate-500': connectionStatus === 'checking'
+          'bg-gray-50 border-gray-300 text-gray-500': connectionStatus === 'checking'
         }">
-        <span class="w-2.5 h-2.5 rounded-full" :class="{
-          'bg-emerald-500': connectionStatus === 'online',
+        <span class="w-2 h-2 rounded-full" :class="{
+          'bg-green-500': connectionStatus === 'online',
           'bg-red-500': connectionStatus === 'offline',
-          'bg-slate-400 animate-pulse': connectionStatus === 'checking'
+          'bg-gray-400 animate-pulse': connectionStatus === 'checking'
         }"></span>
         {{ connectionStatus === 'online' ? 'Terhubung' : connectionStatus === 'checking' ? 'Mengecek...' : 'Terputus' }}
       </button>
-      <button @click="showSettings = true" class="px-3 py-2 rounded-lg bg-white border text-sm font-medium hover:bg-slate-50">⚙️ Pengaturan Pekerja</button>
-      <button @click="showConfig = true" class="px-3 py-2 rounded-lg bg-white border text-sm font-medium hover:bg-slate-50">🔗 Koneksi</button>
+      <button @click="showSettings = true" class="px-3 py-1.5 rounded-lg bg-gray-100 border text-xs font-medium hover:bg-gray-200">⚙️ Pekerja</button>
+      <button @click="showConfig = true" class="px-3 py-1.5 rounded-lg bg-gray-100 border text-xs font-medium hover:bg-gray-200">🔗 Koneksi</button>
     </div>
   </header>
 
   <!-- TOAST -->
-  <div v-if="toast.show" class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm"
-       :class="toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'">
+  <div v-if="toast.show" class="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-lg text-white text-xs font-medium"
+       :class="toast.type === 'error' ? 'bg-red-500' : 'bg-green-600'">
     {{ toast.message }}
   </div>
 
-  <!-- KARTU INFORMASI FINANSIAL -->
-  <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-blue-500">
-      <p class="text-xs text-slate-500 uppercase">Total Omset</p>
-      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalOmset) }}</p>
+  <!-- RINGKASAN DATA -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="bg-white p-4 rounded-xl shadow-sm border">
+      <p class="text-xs text-gray-500">Total Omset</p>
+      <p class="text-lg font-bold text-gray-800">{{ formatRupiah(summary.totalOmset) }}</p>
     </div>
-    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-emerald-500">
-      <p class="text-xs text-slate-500 uppercase">Total Transfer Masuk</p>
-      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalTransferMasuk) }}</p>
+    <div class="bg-white p-4 rounded-xl shadow-sm border">
+      <p class="text-xs text-gray-500">Transfer Masuk</p>
+      <p class="text-lg font-bold text-blue-600">{{ formatRupiah(summary.totalTransferMasuk) }}</p>
     </div>
-    <div class="bg-white rounded-xl shadow p-4 border-l-4 border-purple-500">
-      <p class="text-xs text-slate-500 uppercase">Profit Bersih Owner</p>
-      <p class="text-xl font-bold text-slate-800">{{ formatRupiah(summary.totalOwnerShare) }}</p>
+    <div class="bg-white p-4 rounded-xl shadow-sm border">
+      <p class="text-xs text-gray-500">Profit Owner</p>
+      <p class="text-lg font-bold text-purple-600">{{ formatRupiah(summary.totalOwnerShare) }}</p>
     </div>
-  </section>
+  </div>
 
   <!-- FILTER -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="font-semibold text-slate-700 mb-3">🔍 Filter Data</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-      <div>
-        <label class="text-xs text-slate-500">Dari Tanggal</label>
-        <input type="date" v-model="filter.startDate" class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Sampai Tanggal</label>
-        <input type="date" v-model="filter.endDate" class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
-        <label class="text-xs text-slate-500">Pekerja</label>
-        <select v-model="filter.worker" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="">Semua Pekerja</option>
-          <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
-        </select>
-      </div>
-      <div class="flex items-end gap-2">
-        <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-blue-700">Terapkan</button>
-        <button @click="resetFilter" class="px-3 py-2 rounded-lg border text-sm">Reset</button>
+  <div class="bg-white p-4 rounded-xl shadow-sm border space-y-3">
+    <span class="text-xs font-bold text-gray-700">Filter Data</span>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+      <input type="date" v-model="filter.startDate" class="border rounded-lg px-3 py-1.5 text-xs">
+      <input type="date" v-model="filter.endDate" class="border rounded-lg px-3 py-1.5 text-xs">
+      <select v-model="filter.worker" class="border rounded-lg px-3 py-1.5 text-xs">
+        <option value="">Semua Pekerja</option>
+        <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
+      </select>
+      <div class="flex gap-2">
+        <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium">Terapkan</button>
+        <button @click="resetFilter" class="px-3 py-1.5 border rounded-lg text-xs">Reset</button>
       </div>
     </div>
-  </section>
+  </div>
 
   <!-- FORM TRANSAKSI -->
-  <section class="bg-white rounded-xl shadow p-4">
+  <div class="bg-white p-4 rounded-xl shadow-sm border">
     <div class="flex justify-between items-center mb-3">
-      <h2 class="font-semibold text-slate-700">{{ isEditing ? '✏️ Edit Transaksi' : '➕ Catat Transaksi Baru' }}</h2>
-      <button @click="toggleForm" class="text-sm text-blue-600">{{ showForm ? 'Tutup' : 'Buka Form' }}</button>
+      <span class="text-xs font-bold text-gray-700">{{ isEditing ? 'Edit Transaksi' : 'Catat Transaksi Baru' }}</span>
+      <button @click="toggleForm" class="text-xs text-blue-600 font-medium">{{ showForm ? 'Tutup' : 'Buka Form' }}</button>
     </div>
+
     <form v-if="showForm" @submit.prevent="submitTransaction" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div>
-        <label class="text-xs text-slate-500">Status Pekerja</label>
-        <select v-model="form.jenisOmset" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Status Pekerja</label>
+        <select v-model="form.jenisOmset" class="w-full border rounded-lg px-3 py-1.5 text-xs">
           <option value="Teknisi">Teknisi</option>
           <option value="Korlap">Korlap (Omset Sendiri)</option>
         </select>
       </div>
       <div>
-        <label class="text-xs text-slate-500">Tanggal</label>
-        <input type="date" v-model="form.tanggal" required class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Tanggal</label>
+        <input type="date" v-model="form.tanggal" required class="w-full border rounded-lg px-3 py-1.5 text-xs">
       </div>
       <div>
-        <label class="text-xs text-slate-500">Korlap Penanggung Jawab</label>
-        <select v-model="form.korlap" required class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Korlap</label>
+        <select v-model="form.korlap" required class="w-full border rounded-lg px-3 py-1.5 text-xs">
           <option value="" disabled>Pilih Korlap</option>
           <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
         </select>
       </div>
       <div v-if="form.jenisOmset === 'Teknisi'">
-        <label class="text-xs text-slate-500">Teknisi Pelaksana</label>
-        <select v-model="form.teknisi" required class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Teknisi</label>
+        <select v-model="form.teknisi" required class="w-full border rounded-lg px-3 py-1.5 text-xs">
           <option value="" disabled>Pilih Teknisi</option>
           <option v-for="t in teknisiOptions" :key="t.nama" :value="t.nama">{{ t.nama }}</option>
         </select>
       </div>
       <div>
-        <label class="text-xs text-slate-500">Omset (Rp)</label>
-        <input type="number" v-model.number="form.omset" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Omset (Rp)</label>
+        <input type="number" v-model.number="form.omset" min="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
       </div>
       <div>
-        <label class="text-xs text-slate-500">Transfer Masuk (Rp)</label>
-        <input type="number" v-model.number="form.transfer" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Transfer Masuk (Rp)</label>
+        <input type="number" v-model.number="form.transfer" min="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
       </div>
       <div>
-        <label class="text-xs text-slate-500">Diskon (Rp)</label>
-        <input type="number" v-model.number="form.diskon" min="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <label class="text-[11px] text-gray-500">Diskon (Rp)</label>
+        <input type="number" v-model.number="form.diskon" min="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
       </div>
 
-      <div class="sm:col-span-3 bg-slate-50 p-3 rounded-lg border space-y-1">
-        <div class="flex justify-between text-xs text-slate-600">
-          <span>Rumus Dasar:</span>
-          <span class="font-medium text-slate-700">Omset x {{ form.jenisOmset === 'Teknisi' ? '55%' : '50%' }} - Diskon - Transfer</span>
-        </div>
-        <hr class="my-1">
-        <div class="flex justify-between text-sm font-bold text-slate-800">
-          <span>Total Setoran Wajib:</span>
-          <span class="text-emerald-600">{{ formatRupiah(hitungSetoranForm) }}</span>
-        </div>
+      <div class="sm:col-span-3 bg-gray-50 p-2.5 rounded-lg border flex justify-between items-center text-xs">
+        <span class="text-gray-500">Estimasi Setoran:</span>
+        <span class="font-bold text-green-600">{{ formatRupiah(hitungSetoranForm) }}</span>
       </div>
 
       <div class="sm:col-span-3 flex gap-2">
-        <button type="submit" :disabled="saving" class="bg-emerald-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
+        <button type="submit" :disabled="saving" class="bg-green-600 text-white rounded-lg px-4 py-2 text-xs font-medium hover:bg-green-700 disabled:opacity-50">
           {{ saving ? 'Menyimpan...' : (isEditing ? 'Update Transaksi' : 'Simpan Transaksi') }}
         </button>
-        <button v-if="isEditing" type="button" @click="resetForm" class="bg-slate-200 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-300">
-          Batal Edit
-        </button>
+        <button v-if="isEditing" type="button" @click="resetForm" class="bg-gray-200 text-gray-700 rounded-lg px-4 py-2 text-xs font-medium">Batal</button>
       </div>
     </form>
-  </section>
+  </div>
 
   <!-- REKAP KORLAP -->
-  <section>
-    <h2 class="font-semibold text-slate-700 mb-3">👷 Rekap Individu — Korlap</h2>
+  <div class="space-y-3">
+    <h2 class="text-sm font-bold text-gray-700">Rekap Korlap</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="k in rekapKorlap" :key="k.nama" class="printable-card bg-white rounded-xl shadow p-5 relative border">
-        
-        <div class="border-b pb-3 mb-3 text-center">
-          <h3 class="font-bold text-slate-800 text-lg uppercase">Kurasin Toren Indonesia</h3>
-          <p class="text-[11px] text-slate-500">Jl. Amanah 1 No. 54, Pd. Petir - Depok</p>
-          <p v-if="filter.startDate || filter.endDate" class="text-[11px] font-semibold text-blue-600 mt-1">
-            Periode: {{ filter.startDate || 'Awal' }} s/d {{ filter.endDate || 'Selesai' }}
-          </p>
+      <div v-for="k in rekapKorlap" :key="k.nama" class="printable-card bg-white rounded-xl shadow-sm p-4 border relative">
+        <div class="border-b pb-2 mb-2">
+          <p class="font-bold text-gray-800 text-sm">{{ k.nama }}</p>
+          <p class="text-[10px] text-gray-400">Korlap</p>
         </div>
-
-        <div class="mb-3">
-          <p class="font-bold text-slate-800 text-base">{{ k.nama }}</p>
-          <p class="text-xs text-slate-400">Korlap</p>
-        </div>
-
-        <div class="space-y-1.5 text-sm text-slate-600">
+        <div class="space-y-1 text-xs text-gray-600">
           <div class="flex justify-between"><span>Omset Sendiri (50%)</span><b>{{ formatRupiah(k.omsetSendiri) }}</b></div>
-          <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(k.transferSendiri) }}</span></div>
-          <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(k.diskonSendiri) }}</span></div>
-          
-          <div class="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 my-2">
-            <div class="flex justify-between font-semibold text-indigo-800">
-              <span>Komisi Korlap (5% Omset Teknisi):</span>
-              <span>{{ formatRupiah(k.komisiKorlap) }}</span>
-            </div>
+          <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600">{{ formatRupiah(k.transferSendiri) }}</span></div>
+          <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600">{{ formatRupiah(k.diskonSendiri) }}</span></div>
+          <div class="bg-blue-50 p-2 rounded border border-blue-100 my-1 flex justify-between text-blue-900 font-medium">
+            <span>Komisi Korlap (5% Omset Teknisi):</span>
+            <span>{{ formatRupiah(k.komisiKorlap) }}</span>
           </div>
-
           <hr class="my-1">
           <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(k.totalSetoranPeriodeIni) }}</b></div>
-          <div class="flex justify-between text-xs text-slate-500">
+          <div class="flex justify-between text-gray-400 text-[11px]">
             <span>Setoran Sebelumnya</span>
-            <span>{{ formatRupiah(k.setoranSebelumnya) }}</span>
+            <span>Rp {{ (k.setoranSebelumnya || 0).toLocaleString('id-ID') }}</span>
           </div>
           <hr class="my-1">
-          <div class="flex justify-between font-bold text-slate-800 text-base">
+          <div class="flex justify-between font-bold text-sm">
             <span>Total Setoran Akhir</span>
-            <span :class="k.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
+            <span :class="k.totalSetoranAkhir >= 0 ? 'text-red-600' : 'text-red-600'">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
           </div>
 
           <div class="no-export pt-2">
-            <label class="text-xs text-slate-500 block mb-1">Setoran Sudah Dibayar:</label>
-            <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded-lg px-2 py-1 text-sm mb-1">
-            <div class="flex justify-between items-center text-xs">
-              <span class="font-medium">Status / Sisa Setoran:</span>
-              <span class="font-bold" :class="hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'text-emerald-600' : 'text-amber-600'">
+            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
+            <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs mb-1">
+            <div class="flex justify-between items-center text-[11px]">
+              <span>Status / Sisa Setoran:</span>
+              <span class="font-bold text-green-600">
                 {{ hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(k.totalSetoranAkhir, k.sudahDibayar)) }}
               </span>
             </div>
           </div>
         </div>
 
-        <div class="mt-4 pt-3 border-t text-center bg-slate-50 -mx-5 -mb-5 p-3 rounded-b-xl">
-          <p class="text-xs font-semibold text-slate-700">Bank BCA: <span class="font-bold text-blue-700">4731824481</span></p>
-          <p class="text-xs text-slate-500 font-medium">a.n. Eri H</p>
+        <div class="mt-3 pt-2 border-t text-center text-[10px] text-gray-500">
+          Bank BCA: <b class="text-blue-600">4731824481</b> a.n. Eri H
         </div>
 
-        <div class="no-export mt-4">
-          <button @click="exportCard($event)" class="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg py-2 font-medium border">🖼️ Print / Export Gambar</button>
+        <div class="no-export mt-3">
+          <button @click="exportCard($event)" class="w-full text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 rounded py-1.5 border">🖼️ Print / Export Gambar</button>
         </div>
       </div>
-      <p v-if="rekapKorlap.length === 0" class="text-sm text-slate-400 col-span-full">Belum ada data Korlap.</p>
     </div>
-  </section>
+  </div>
 
   <!-- REKAP TEKNISI -->
-  <section>
-    <h2 class="font-semibold text-slate-700 mb-3">🛠️ Rekap Individu — Teknisi</h2>
+  <div class="space-y-3">
+    <h2 class="text-sm font-bold text-gray-700">Rekap Teknisi</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="t in rekapTeknisi" :key="t.nama" class="printable-card bg-white rounded-xl shadow p-5 relative border">
-        
-        <div class="border-b pb-3 mb-3 text-center">
-          <h3 class="font-bold text-slate-800 text-lg uppercase">Kurasin Toren Indonesia</h3>
-          <p class="text-[11px] text-slate-500">Jl. Amanah 1 No. 54, Pd. Petir - Depok</p>
-          <p v-if="filter.startDate || filter.endDate" class="text-[11px] font-semibold text-blue-600 mt-1">
-            Periode: {{ filter.startDate || 'Awal' }} s/d {{ filter.endDate || 'Selesai' }}
-          </p>
+      <div v-for="t in rekapTeknisi" :key="t.nama" class="printable-card bg-white rounded-xl shadow-sm p-4 border relative">
+        <div class="border-b pb-2 mb-2">
+          <p class="font-bold text-gray-800 text-sm">{{ t.nama }}</p>
+          <p class="text-[10px] text-gray-400">Teknisi</p>
         </div>
-
-        <div class="mb-3">
-          <p class="font-bold text-slate-800 text-base">{{ t.nama }}</p>
-          <p class="text-xs text-slate-400">Teknisi</p>
-        </div>
-
-        <div class="space-y-1.5 text-sm text-slate-600">
+        <div class="space-y-1 text-xs text-gray-600">
           <div class="flex justify-between"><span>Total Omset</span><b>{{ formatRupiah(t.totalOmset) }}</b></div>
-          <div class="flex justify-between font-semibold text-indigo-700"><span>Hak Teknisi (45%)</span><span>{{ formatRupiah(t.hakTeknisi) }}</span></div>
-          <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(t.totalTransfer) }}</span></div>
-          <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(t.totalDiskon) }}</span></div>
+          <div class="flex justify-between text-indigo-600 font-medium"><span>Hak Teknisi (45%)</span><span>{{ formatRupiah(t.hakTeknisi) }}</span></div>
+          <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600">{{ formatRupiah(t.totalTransfer) }}</span></div>
+          <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600">{{ formatRupiah(t.totalDiskon) }}</span></div>
           <hr class="my-1">
           <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(t.totalSetoranPeriodeIni) }}</b></div>
-          <div class="flex justify-between text-xs text-slate-500">
+          <div class="flex justify-between text-gray-400 text-[11px]">
             <span>Setoran Sebelumnya</span>
-            <span>{{ formatRupiah(t.setoranSebelumnya) }}</span>
+            <span>Rp {{ (t.setoranSebelumnya || 0).toLocaleString('id-ID') }}</span>
           </div>
           <hr class="my-1">
-          <div class="flex justify-between font-bold text-slate-800 text-base">
+          <div class="flex justify-between font-bold text-sm">
             <span>Total Setoran Akhir</span>
-            <span :class="t.totalSetoranAkhir >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
+            <span :class="t.totalSetoranAkhir >= 0 ? 'text-red-600' : 'text-red-600'">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
           </div>
 
           <div class="no-export pt-2">
-            <label class="text-xs text-slate-500 block mb-1">Setoran Sudah Dibayar:</label>
-            <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded-lg px-2 py-1 text-sm mb-1">
-            <div class="flex justify-between items-center text-xs">
-              <span class="font-medium">Status / Sisa Setoran:</span>
-              <span class="font-bold" :class="hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'text-emerald-600' : 'text-amber-600'">
+            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
+            <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs mb-1">
+            <div class="flex justify-between items-center text-[11px]">
+              <span>Status / Sisa Setoran:</span>
+              <span class="font-bold text-green-600">
                 {{ hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(t.totalSetoranAkhir, t.sudahDibayar)) }}
               </span>
             </div>
           </div>
         </div>
 
-        <div class="mt-4 pt-3 border-t text-center bg-slate-50 -mx-5 -mb-5 p-3 rounded-b-xl">
-          <p class="text-xs font-semibold text-slate-700">Bank BCA: <span class="font-bold text-blue-700">4731824481</span></p>
-          <p class="text-xs text-slate-500 font-medium">a.n. Eri H</p>
+        <div class="mt-3 pt-2 border-t text-center text-[10px] text-gray-500">
+          Bank BCA: <b class="text-blue-600">4731824481</b> a.n. Eri H
         </div>
 
-        <div class="no-export mt-4">
-          <button @click="exportCard($event)" class="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg py-2 font-medium border">🖼️ Print / Export Gambar</button>
+        <div class="no-export mt-3">
+          <button @click="exportCard($event)" class="w-full text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 rounded py-1.5 border">🖼️ Print / Export Gambar</button>
         </div>
       </div>
-      <p v-if="rekapTeknisi.length === 0" class="text-sm text-slate-400 col-span-full">Belum ada data Teknisi.</p>
     </div>
-  </section>
+  </div>
 
-  <!-- TABEL TRANSAKSI -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="font-semibold text-slate-700 mb-3">📋 Daftar Transaksi ({{ transactions.length }})</h2>
+  <!-- DAFTAR TRANSAKSI -->
+  <div class="bg-white rounded-xl shadow-sm border p-4">
+    <h2 class="text-sm font-bold text-gray-700 mb-3">Daftar Transaksi</h2>
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full text-xs text-left">
         <thead>
-          <tr class="text-left text-slate-500 border-b">
-            <th class="py-2 pr-3">Tanggal</th>
-            <th class="py-2 pr-3">Peran</th>
-            <th class="py-2 pr-3">Korlap</th>
-            <th class="py-2 pr-3">Teknisi</th>
-            <th class="py-2 pr-3 text-right">Omset</th>
-            <th class="py-2 pr-3 text-right">Transfer</th>
-            <th class="py-2 pr-3 text-right">Diskon</th>
-            <th class="py-2 pr-3 text-right">Setoran Wajib</th>
-            <th class="py-2 pr-3 text-center">Aksi</th>
+          <tr class="border-b text-gray-400">
+            <th class="py-2 pr-2">Tanggal</th>
+            <th class="py-2 pr-2">Jenis</th>
+            <th class="py-2 pr-2">Korlap</th>
+            <th class="py-2 pr-2">Teknisi</th>
+            <th class="py-2 pr-2 text-right">Omset</th>
+            <th class="py-2 pr-2 text-right">Setoran</th>
+            <th class="py-2 pr-2 text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in transactions" :key="t.id" class="border-b hover:bg-slate-50">
-            <td class="py-2 pr-3 whitespace-nowrap">{{ t.tanggal }}</td>
-            <td class="py-2 pr-3">{{ t.jenisOmset }}</td>
-            <td class="py-2 pr-3">{{ t.korlap }}</td>
-            <td class="py-2 pr-3">{{ t.teknisi || '-' }}</td>
-            <td class="py-2 pr-3 text-right font-medium">{{ formatRupiah(t.omset) }}</td>
-            <td class="py-2 pr-3 text-right text-blue-600">{{ formatRupiah(t.transfer) }}</td>
-            <td class="py-2 pr-3 text-right text-amber-600">{{ formatRupiah(t.diskon) }}</td>
-            <td class="py-2 pr-3 text-right font-bold text-slate-800">{{ formatRupiah(t.setoran) }}</td>
-            <td class="py-2 pr-3 text-center whitespace-nowrap">
-              <button @click="editTransaction(t)" class="text-xs text-blue-600 hover:underline mr-3">Edit</button>
-              <button @click="removeTransaction(t)" class="text-xs text-red-500 hover:underline">Hapus</button>
+          <tr v-for="t in transactions" :key="t.id" class="border-b hover:bg-gray-50">
+            <td class="py-2 pr-2 whitespace-nowrap">{{ t.tanggal }}</td>
+            <td class="py-2 pr-2">{{ t.jenisOmset }}</td>
+            <td class="py-2 pr-2">{{ t.korlap }}</td>
+            <td class="py-2 pr-2">{{ t.teknisi || '-' }}</td>
+            <td class="py-2 pr-2 text-right font-medium">{{ formatRupiah(t.omset) }}</td>
+            <td class="py-2 pr-2 text-right font-bold text-gray-800">{{ formatRupiah(t.setoran) }}</td>
+            <td class="py-2 pr-2 text-center whitespace-nowrap">
+              <button @click="editTransaction(t)" class="text-blue-600 hover:underline mr-2">Edit</button>
+              <button @click="removeTransaction(t)" class="text-red-500 hover:underline">Hapus</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </section>
+  </div>
 
   <!-- MODAL: KONEKSI -->
   <div v-if="showConfig" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-md">
-      <h3 class="font-semibold text-slate-800 mb-2">🔗 Koneksi Google Apps Script</h3>
-      <input type="text" v-model="tempUrl" placeholder="https://script.google.com/macros/s/xxx/exec" class="w-full border rounded-lg px-3 py-2 text-sm mb-3">
+    <div class="bg-white rounded-xl shadow-lg p-5 w-full max-w-sm">
+      <h3 class="font-bold text-sm text-gray-800 mb-2">Koneksi Apps Script</h3>
+      <input type="text" v-model="tempUrl" placeholder="Paste URL Apps Script disini..." class="w-full border rounded-lg px-3 py-2 text-xs mb-3">
       <div class="flex justify-end gap-2">
-        <button @click="showConfig = false" class="px-3 py-2 text-sm rounded-lg border">Batal</button>
-        <button @click="saveConfig" class="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white">Simpan</button>
+        <button @click="showConfig = false" class="px-3 py-1.5 text-xs rounded border">Batal</button>
+        <button @click="saveConfig" class="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-medium">Simpan</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: PENGATURAN PEKERJA -->
+  <!-- MODAL: PEKERJA -->
   <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl p-5 w-full max-w-lg max-h-[85vh] overflow-y-auto">
-      <h3 class="font-semibold text-slate-800 mb-3">👤 Tambah / Kelola Pekerja</h3>
-      <form @submit.prevent="submitWorker" class="grid grid-cols-1 gap-3 mb-5">
-        <input type="text" v-model="workerForm.nama" placeholder="Nama pekerja" required class="w-full border rounded-lg px-3 py-2 text-sm">
-        <select v-model="workerForm.peran" class="w-full border rounded-lg px-3 py-2 text-sm">
+    <div class="bg-white rounded-xl shadow-lg p-5 w-full max-w-md">
+      <h3 class="font-bold text-sm text-gray-800 mb-3">Tambah Pekerja</h3>
+      <form @submit.prevent="submitWorker" class="space-y-3 mb-4">
+        <input type="text" v-model="workerForm.nama" placeholder="Nama Pekerja" required class="w-full border rounded-lg px-3 py-1.5 text-xs">
+        <select v-model="workerForm.peran" class="w-full border rounded-lg px-3 py-1.5 text-xs">
           <option value="Korlap">Korlap</option>
           <option value="Teknisi">Teknisi</option>
         </select>
-        <select v-if="workerForm.peran === 'Teknisi'" v-model="workerForm.korlapInduk" class="w-full border rounded-lg px-3 py-2 text-sm">
+        <select v-if="workerForm.peran === 'Teknisi'" v-model="workerForm.korlapInduk" class="w-full border rounded-lg px-3 py-1.5 text-xs">
           <option value="">Tanpa Korlap Induk</option>
           <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
         </select>
         <div>
-          <label class="text-xs text-slate-500">Setoran Awal / Saldo Sebelumnya (Rp)</label>
-          <input type="number" v-model.number="workerForm.setoranAwal" placeholder="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+          <label class="text-[10px] text-gray-400 block">Setoran Awal / Saldo Awal (Rp)</label>
+          <input type="number" v-model.number="workerForm.setoranAwal" placeholder="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
         </div>
-        <button type="submit" class="bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium">Tambah Pekerja</button>
+        <button type="submit" class="w-full bg-green-600 text-white rounded-lg py-2 text-xs font-medium">Tambah Pekerja</button>
       </form>
-
       <div class="flex justify-end">
-        <button @click="showSettings = false" class="px-3 py-2 text-sm rounded-lg border">Tutup</button>
+        <button @click="showSettings = false" class="px-3 py-1.5 text-xs rounded border">Tutup</button>
       </div>
     </div>
   </div>
@@ -384,7 +329,6 @@ createApp({
       showForm: false,
       isEditing: false,
       saving: false,
-      loading: false,
       toast: { show: false, message: '', type: 'success' },
 
       filter: { startDate: '', endDate: '', worker: '' },
@@ -401,13 +345,11 @@ createApp({
   computed: {
     korlapOptions() { return this.workers.filter(w => w.peran === 'Korlap'); },
     teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); },
-    
     hitungSetoranForm() {
       const omset = Number(this.form.omset) || 0;
       const transfer = Number(this.form.transfer) || 0;
       const diskon = Number(this.form.diskon) || 0;
       const persen = (this.form.jenisOmset === 'Teknisi') ? 0.55 : 0.50;
-      
       return (omset * persen) - diskon - transfer;
     }
   },
@@ -449,7 +391,6 @@ createApp({
       return Math.max(0, sisa);
     },
 
-    /* API HELPERS */
     apiGet(action, params = {}) {
       const cleanUrl = this.scriptUrl.trim();
       const qs = new URLSearchParams({ action, ...params }).toString();
@@ -464,10 +405,8 @@ createApp({
       }).then(r => r.json());
     },
 
-    /* LOAD DATA */
     loadData() {
-      if (!this.scriptUrl) { this.showConfig = true; return; }
-      this.loading = true;
+      if (!this.scriptUrl) return;
       this.apiGet('getData', {
         startDate: this.filter.startDate,
         endDate: this.filter.endDate,
@@ -479,17 +418,15 @@ createApp({
         this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0 };
         this.rekapKorlap = res.rekapKorlap || [];
         this.rekapTeknisi = res.rekapTeknisi || [];
-      }).catch(err => {
-        console.error(err);
-        this.showToast('Gagal memuat data dari server.', 'error');
-      }).finally(() => this.loading = false);
+      }).catch(() => {
+        this.showToast('Gagal terhubung ke Apps Script.', 'error');
+      });
     },
     resetFilter() {
       this.filter = { startDate: '', endDate: '', worker: '' };
       this.loadData();
     },
 
-    /* FORM & TRANSAKSI */
     toggleForm() {
       this.showForm = !this.showForm;
       if (!this.showForm) this.resetForm();
@@ -507,8 +444,8 @@ createApp({
     submitTransaction() {
       this.saving = true;
       this.apiPost('saveTransaction', { data: this.form }).then(res => {
-        if (res.error || res.success === false) { this.showToast(res.error || 'Gagal menyimpan', 'error'); return; }
-        this.showToast('Transaksi berhasil disimpan');
+        if (res.error) { this.showToast(res.error, 'error'); return; }
+        this.showToast('Transaksi tersimpan');
         this.resetForm();
         this.loadData();
       }).catch(() => this.showToast('Gagal menyimpan transaksi', 'error'))
@@ -523,7 +460,6 @@ createApp({
       });
     },
 
-    /* PEKERJA */
     submitWorker() {
       this.apiPost('saveWorker', { data: this.workerForm }).then(res => {
         if (res.error) { this.showToast(res.error, 'error'); return; }
@@ -533,7 +469,6 @@ createApp({
       });
     },
 
-    /* EXPORT CARD */
     exportCard(event) {
       const card = event.target.closest('.printable-card');
       if (!card) return;
