@@ -20,7 +20,7 @@
   <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
     <div>
       <h1 class="text-xl font-bold text-gray-800">Keuangan Operasional</h1>
-      <p class="text-xs text-gray-500">Pencatatan Omset & Setoran Teknisi</p>
+      <p class="text-xs text-gray-500">Pencatatan omset & setoran pekerja</p>
     </div>
     <div class="flex items-center gap-2 w-full sm:w-auto">
       <button @click="checkConnection" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-2"
@@ -170,31 +170,31 @@
           <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(k.totalSetoranPeriodeIni) }}</b></div>
           <div class="flex justify-between text-gray-400 text-[11px]">
             <span>Setoran Sebelumnya</span>
-            <span>Rp {{ (k.setoranSebelumnya || 0).toLocaleString('id-ID') }}</span>
+            <span :class="k.setoranSebelumnya >= 0 ? 'text-green-600' : 'text-red-600'">{{ formatRupiah(k.setoranSebelumnya) }}</span>
           </div>
           <hr class="my-1">
-          <div class="flex justify-between font-bold text-sm">
+          
+          <!-- TOTAL SETORAN AKHIR DENGAN INDIKATOR WARNA -->
+          <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
-            <span class="text-red-600">{{ formatRupiah(k.totalSetoranAkhir) }}</span>
-          </div>
-
-          <!-- INPUT SETORAN DIBAYAR + EDIT ACTION -->
-          <div class="no-export pt-2">
-            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
-            <div class="flex gap-1.5 mb-1">
-              <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
-              <button @click="prosesBayar(k)" class="bg-blue-600 text-white text-[11px] font-medium px-2.5 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
-                Simpan
-              </button>
-              <button @click="editSaldoBayar(k)" class="bg-amber-500 text-white text-[11px] font-medium px-2 py-1 rounded hover:bg-amber-600 whitespace-nowrap" title="Edit saldo sebelumnya">
+            <div class="flex items-center gap-1">
+              <span :class="k.totalSetoranAkhir >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatRupiah(k.totalSetoranAkhir) }}
+              </span>
+              <button @click="editTotalSetoranAkhir(k)" class="no-export text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded hover:bg-amber-200 ml-1" title="Edit Total Setoran Akhir">
                 ✏️ Edit
               </button>
             </div>
-            <div class="flex justify-between items-center text-[11px]">
-              <span>Status / Sisa Setoran:</span>
-              <span class="font-bold" :class="hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'text-green-600' : 'text-red-500'">
-                {{ hitungSisa(k.totalSetoranAkhir, k.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(k.totalSetoranAkhir, k.sudahDibayar)) }}
-              </span>
+          </div>
+
+          <!-- INPUT SETORAN DIBAYAR -->
+          <div class="no-export pt-2 border-t">
+            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
+            <div class="flex gap-1.5 mb-1">
+              <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
+              <button @click="prosesBayar(k)" class="bg-blue-600 text-white text-[11px] font-medium px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
+                Simpan
+              </button>
             </div>
           </div>
         </div>
@@ -237,31 +237,31 @@
           <div class="flex justify-between"><span>Setoran Periode Ini</span><b>{{ formatRupiah(t.totalSetoranPeriodeIni) }}</b></div>
           <div class="flex justify-between text-gray-400 text-[11px]">
             <span>Setoran Sebelumnya</span>
-            <span>Rp {{ (t.setoranSebelumnya || 0).toLocaleString('id-ID') }}</span>
+            <span :class="t.setoranSebelumnya >= 0 ? 'text-green-600' : 'text-red-600'">{{ formatRupiah(t.setoranSebelumnya) }}</span>
           </div>
           <hr class="my-1">
-          <div class="flex justify-between font-bold text-sm">
-            <span>Total Setoran Akhir</span>
-            <span class="text-red-600">{{ formatRupiah(t.totalSetoranAkhir) }}</span>
-          </div>
 
-          <!-- INPUT SETORAN DIBAYAR + EDIT ACTION -->
-          <div class="no-export pt-2">
-            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
-            <div class="flex gap-1.5 mb-1">
-              <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
-              <button @click="prosesBayar(t)" class="bg-blue-600 text-white text-[11px] font-medium px-2.5 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
-                Simpan
-              </button>
-              <button @click="editSaldoBayar(t)" class="bg-amber-500 text-white text-[11px] font-medium px-2 py-1 rounded hover:bg-amber-600 whitespace-nowrap" title="Edit saldo sebelumnya">
+          <!-- TOTAL SETORAN AKHIR DENGAN INDIKATOR WARNA -->
+          <div class="flex justify-between items-center font-bold text-sm my-2">
+            <span>Total Setoran Akhir</span>
+            <div class="flex items-center gap-1">
+              <span :class="t.totalSetoranAkhir >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatRupiah(t.totalSetoranAkhir) }}
+              </span>
+              <button @click="editTotalSetoranAkhir(t)" class="no-export text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded hover:bg-amber-200 ml-1" title="Edit Total Setoran Akhir">
                 ✏️ Edit
               </button>
             </div>
-            <div class="flex justify-between items-center text-[11px]">
-              <span>Status / Sisa Setoran:</span>
-              <span class="font-bold" :class="hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'text-green-600' : 'text-red-500'">
-                {{ hitungSisa(t.totalSetoranAkhir, t.sudahDibayar) === 0 ? 'LUNAS' : formatRupiah(hitungSisa(t.totalSetoranAkhir, t.sudahDibayar)) }}
-              </span>
+          </div>
+
+          <!-- INPUT SETORAN DIBAYAR -->
+          <div class="no-export pt-2 border-t">
+            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
+            <div class="flex gap-1.5 mb-1">
+              <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
+              <button @click="prosesBayar(t)" class="bg-blue-600 text-white text-[11px] font-medium px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
+                Simpan
+              </button>
             </div>
           </div>
         </div>
@@ -432,57 +432,55 @@ createApp({
         this.loadData();
       }
     },
-    hitungSisa(totalSetoranAkhir, sudahDibayar) {
-      const sisa = totalSetoranAkhir - (Number(sudahDibayar) || 0);
-      return Math.max(0, sisa);
-    },
 
     prosesBayar(worker) {
       const dibayar = Number(worker.sudahDibayar) || 0;
       
-      // Hitung sisa akhir baru
-      const sisaBaru = this.hitungSisa(worker.totalSetoranAkhir, dibayar);
+      // Kelebihan atau kekurangan otomatis dimasukkan ke sisa setoran berikutnya
+      const sisaAtauKelebihanBaru = worker.totalSetoranAkhir - dibayar;
       
-      // Jika korlap, komisi di-reset / dianggap terproses
+      // Reset komisi korlap jika status pekerja adalah Korlap
       if (worker.peran === 'Korlap') {
         worker.komisiKorlap = 0;
       }
 
-      worker.setoranSebelumnya = sisaBaru;
+      worker.setoranSebelumnya = sisaAtauKelebihanBaru;
       worker.sudahDibayar = 0;
 
-      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: sisaBaru })
+      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: sisaAtauKelebihanBaru })
         .then(res => {
           if (res && res.error) {
             this.showToast(res.error, 'error');
           } else {
-            this.showToast(sisaBaru === 0 ? 'Setoran LUNAS!' : 'Pembayaran tersimpan & saldo di-update');
+            this.showToast('Pembayaran berhasil disimpan. Saldo otomatis diperbarui!');
             this.loadData();
           }
         })
         .catch(() => {
-          this.showToast('Saldo diperbarui (Lokal)');
+          this.showToast('Gagal menyimpan pembayaran', 'error');
         });
     },
 
-    editSaldoBayar(worker) {
-      const inputBaru = prompt(`Edit Saldo Setoran Sebelumnya untuk ${worker.nama}:`, worker.setoranSebelumnya || 0);
+    editTotalSetoranAkhir(worker) {
+      const inputBaru = prompt(`Edit Total Setoran Akhir untuk ${worker.nama}:`, worker.totalSetoranAkhir || 0);
       if (inputBaru === null) return;
 
-      const nominalBaru = Number(inputBaru) || 0;
-      worker.setoranSebelumnya = nominalBaru;
+      const totalAkhirBaru = Number(inputBaru) || 0;
+      
+      // Menghitung penyesuaian untuk Setoran Sebelumnya agar Total Akhir sesuai input user
+      const setoranSebelumnyaBaru = totalAkhirBaru - worker.totalSetoranPeriodeIni;
 
-      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: nominalBaru })
+      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: setoranSebelumnyaBaru })
         .then(res => {
           if (res && res.error) {
             this.showToast(res.error, 'error');
           } else {
-            this.showToast('Saldo setoran berhasil diubah');
+            this.showToast('Total Setoran Akhir berhasil diubah!');
             this.loadData();
           }
         })
         .catch(() => {
-          this.showToast('Gagal mengubah saldo');
+          this.showToast('Gagal memperbarui nilai', 'error');
         });
     },
 
