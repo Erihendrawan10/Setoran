@@ -23,9 +23,9 @@
     <div class="flex items-center gap-2">
       <div>
         <h1 class="text-2xl font-bold text-slate-800">💰 Keuangan Operasional</h1>
-        <p class="text-sm text-slate-500">Pencatatan omset & setoran pekerja — tersinkron ke Google Sheets</p>
+        <p class="text-sm text-slate-500">Setoran Teknisi</p>
       </div>
-      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.3</span>
+      <span class="text-[11px] font-semibold bg-slate-800 text-white px-2 py-0.5 rounded-full self-start mt-1">v2.4</span>
     </div>
     <div class="flex items-center gap-2">
       <button @click="checkConnection" class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border"
@@ -102,25 +102,25 @@
     </div>
     <form v-if="showForm" @submit.prevent="submitTransaction" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div>
-        <label class="text-xs text-slate-500">Tanggal</label>
-        <input type="date" v-model="form.tanggal" required class="w-full border rounded-lg px-3 py-2 text-sm">
-      </div>
-      <div>
         <label class="text-xs text-slate-500">Status Pekerja</label>
         <select v-model="form.jenisOmset" class="w-full border rounded-lg px-3 py-2 text-sm">
-          <option value="Korlap">Korlap</option>
+          <option value="Korlap">Korlap (Omset Sendiri)</option>
           <option value="Teknisi">Teknisi</option>
         </select>
       </div>
       <div>
-        <label class="text-xs text-slate-500">Korlap</label>
+        <label class="text-xs text-slate-500">Tanggal</label>
+        <input type="date" v-model="form.tanggal" required class="w-full border rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-slate-500">Korlap Penanggung Jawab</label>
         <select v-model="form.korlap" required class="w-full border rounded-lg px-3 py-2 text-sm">
           <option value="" disabled>Pilih Korlap</option>
           <option v-for="k in korlapOptions" :key="k.nama" :value="k.nama">{{ k.nama }}</option>
         </select>
       </div>
       <div v-if="form.jenisOmset === 'Teknisi'">
-        <label class="text-xs text-slate-500">Teknisi</label>
+        <label class="text-xs text-slate-500">Teknisi Pelaksana</label>
         <select v-model="form.teknisi" required class="w-full border rounded-lg px-3 py-2 text-sm">
           <option value="" disabled>Pilih Teknisi</option>
           <option v-for="t in teknisiOptions" :key="t.nama" :value="t.nama">{{ t.nama }}</option>
@@ -141,7 +141,7 @@
 
       <div class="sm:col-span-3 bg-slate-50 p-3 rounded-lg border space-y-1">
         <div class="flex justify-between text-xs text-slate-600">
-          <span>Hak Pekerja ({{ form.jenisOmset === 'Teknisi' ? '55%' : '50%' }} dari Omset):</span>
+          <span>Hak Pekerja ({{ form.jenisOmset === 'Teknisi' ? '45%' : '50%' }} dari Omset):</span>
           <span class="font-bold text-indigo-600">{{ formatRupiah(hitungHakPekerjaForm) }}</span>
         </div>
         <hr class="my-1">
@@ -182,14 +182,14 @@
         </div>
 
         <div class="space-y-1.5 text-sm text-slate-600">
-          <div class="flex justify-between"><span>Omset Sendiri</span><b>{{ formatRupiah(k.omsetSendiri) }}</b></div>
+          <div class="flex justify-between"><span>Omset Sendiri (50%)</span><b>{{ formatRupiah(k.omsetSendiri) }}</b></div>
           <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(k.transferSendiri) }}</span></div>
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(k.diskonSendiri) }}</span></div>
           
-          <!-- SEKSI KOMISI KORLAP (5%) -->
+          <!-- SEKSI KOMISI KORLAP (5% Dari Omset Teknisi) -->
           <div class="bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 my-2 space-y-1">
             <div class="flex justify-between font-semibold text-indigo-800">
-              <span>Komisi Korlap (5%):</span>
+              <span>Komisi Korlap (5% Teknisi):</span>
               <span>{{ formatRupiah(k.komisiKorlap) }}</span>
             </div>
             <div class="no-export flex items-center justify-between text-xs text-indigo-600">
@@ -257,7 +257,7 @@
 
         <div class="space-y-1.5 text-sm text-slate-600">
           <div class="flex justify-between"><span>Total Omset</span><b>{{ formatRupiah(t.totalOmset) }}</b></div>
-          <div class="flex justify-between font-semibold text-indigo-700"><span>Hak Teknisi (55%)</span><span>{{ formatRupiah(t.hakTeknisi) }}</span></div>
+          <div class="flex justify-between font-semibold text-indigo-700"><span>Hak Teknisi (45%)</span><span>{{ formatRupiah(t.hakTeknisi) }}</span></div>
           <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600 font-medium">{{ formatRupiah(t.totalTransfer) }}</span></div>
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600 font-medium">{{ formatRupiah(t.totalDiskon) }}</span></div>
           <hr class="my-1">
@@ -392,7 +392,7 @@ createApp({
 
       filter: { startDate: '', endDate: '', worker: '' },
       form: { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Korlap', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 },
-      settingsForm: { PotonganTeknisi: 55, OwnerDariTeknisi: 50, KomisiKorlapDariTeknisi: 5, PersenKorlapDariOmsetSendiri: 50 },
+      settingsForm: { HakTeknisi: 45, OwnerDariTeknisi: 55, KomisiKorlapDariTeknisi: 5, PersenKorlapDariOmsetSendiri: 50 },
       workerForm: { nama: '', peran: 'Korlap', korlapInduk: '', setoranAwal: 0 },
 
       transactions: [],
@@ -407,7 +407,7 @@ createApp({
     teknisiOptions() { return this.workers.filter(w => w.peran === 'Teknisi'); },
     hitungHakPekerjaForm() {
       const omset = Number(this.form.omset) || 0;
-      const pct = (this.form.jenisOmset === 'Teknisi') ? 0.55 : 0.50;
+      const pct = (this.form.jenisOmset === 'Teknisi') ? 0.45 : 0.50;
       return omset * pct;
     },
     hitungSetoranForm() {
