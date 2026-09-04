@@ -32,6 +32,20 @@
   .summary-item .label{font-size:12px;color:var(--muted);}
   .summary-item .value{font-size:20px;font-weight:700;margin-top:4px;}
   .value.plus{color:var(--plus);} .value.minus{color:var(--minus);}
+  .grid-karyawan{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;}
+  .kcard{background:#f9fafb;border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;}
+  .kcard-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .kcard-nama{font-weight:700;font-size:15px;margin-bottom:4px;}
+  .kcard-rows{display:flex;flex-direction:column;gap:5px;font-size:13px;}
+  .kcard-row{display:flex;justify-content:space-between;gap:8px;}
+  .kcard-row span{color:var(--muted);}
+  .kcard-row.total{border-top:1px dashed var(--border);padding-top:7px;margin-top:2px;font-size:14px;}
+  .kcard-row.total b{font-size:16px;}
+  .kcard-transfer{font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 8px;}
+  .conn-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 16px;}
+  .conn-bar span{font-size:12px;color:var(--muted);word-break:break-all;}
+  .conn-bar span.ok{color:var(--plus);font-weight:600;}
+  .conn-bar span.bad{color:var(--minus);font-weight:600;}
   .filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px;}
   .field{display:flex;flex-direction:column;gap:4px;}
   label{font-size:12px;color:var(--muted);}
@@ -73,12 +87,17 @@
 <body>
 
 <header class="topbar">
-  <span class="ver">v2.0</span>
+  <span class="ver">v3.0</span>
   <h1>Kurasin Toren Indonesia</h1>
   <p>Jl Amanah 1 No 54, Pd Petir - Depok · 082213807278</p>
 </header>
 
 <div class="container">
+  <div class="card conn-bar" id="connBar">
+    <span id="connStatus">Mengecek koneksi...</span>
+    <button class="btn secondary small" id="btnHubungkan" onclick="openKoneksiModal()">🔗 Hubungkan Spreadsheet</button>
+  </div>
+
   <div class="tabs">
     <button class="tab-btn active" data-tab="dashboard">Ringkasan</button>
     <button class="tab-btn" data-tab="transaksi">Transaksi</button>
@@ -94,12 +113,9 @@
         <div class="field"><label>Nama</label><select id="filterNama"><option value="">Semua Nama</option></select></div>
         <button class="btn" onclick="loadSummary()">Terapkan Filter</button>
         <button class="btn secondary" onclick="resetFilter()">Semua Data</button>
-        <button class="btn secondary" onclick="printRingkasan()">🖼️ Print/Share Ringkasan</button>
       </div>
-      <div id="ringkasanCapture">
-        <div class="grid-summary" id="summaryGrid">
-          <div class="empty">Memuat ringkasan...</div>
-        </div>
+      <div class="grid-karyawan" id="summaryGrid">
+        <div class="empty">Memuat ringkasan...</div>
       </div>
     </div>
 
@@ -132,10 +148,10 @@
             <tr>
               <th>Tanggal</th><th>Nama</th><th>Status</th><th>Omset</th><th>%</th>
               <th>Setoran</th><th>Komisi Korlap</th><th>Diskon</th><th>Transfer</th>
-              <th>Jml Setoran</th><th>Total Setoran</th><th>Aksi</th>
+              <th>Jml Setoran</th><th>Aksi</th>
             </tr>
           </thead>
-          <tbody><tr><td colspan="12" class="empty">Memuat data...</td></tr></tbody>
+          <tbody><tr><td colspan="11" class="empty">Memuat data...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -154,14 +170,14 @@
           </select>
         </div>
         <div class="field">
-          <label>Saldo Awal (opsional)</label>
-          <input type="number" id="karyawanSaldoAwal" value="0">
-          <div class="hint">Isi jika sebelum pakai app ini sudah ada hutang/piutang. Positif = dia masih hutang ke owner, negatif = owner hutang ke dia.</div>
+          <label>Setoran Sebelumnya (opsional)</label>
+          <input type="number" id="karyawanSetoranSebelumnya" value="0">
+          <div class="hint">Isi jika sebelum pakai app ini sudah ada hutang/piutang. Nilai ini akan otomatis ter-update setiap kamu input nominal transfer/pembayaran setoran. Positif = dia masih hutang ke owner, negatif = owner hutang ke dia.</div>
         </div>
         <button class="btn" onclick="addKaryawanFn()">+ Tambah Karyawan</button>
       </div>
       <table>
-        <thead><tr><th>Nama</th><th>Status</th><th>Persentase</th><th>Saldo Awal</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>Nama</th><th>Status</th><th>Persentase</th><th>Setoran Sebelumnya</th><th>Aksi</th></tr></thead>
         <tbody id="karyawanBody"><tr><td colspan="5" class="empty">Memuat...</td></tr></tbody>
       </table>
     </div>
@@ -186,7 +202,7 @@
         <div>Setoran (<span id="pvPersen">-</span>): <b id="pvSetoran">Rp 0</b></div>
         <div id="pvKomisiRow">Komisi Korlap (5% omset teknisi): <b id="pvKomisi">-</b></div>
         <div>Jumlah Setoran (perkiraan): <b id="pvJumlah">Rp 0</b></div>
-        <div class="hint">Setoran sebelumnya (hutang/piutang lama) dihitung otomatis oleh sistem saat disimpan, dan hanya ditampilkan di tab Ringkasan.</div>
+        <div class="hint">Setoran sebelumnya (hutang/piutang lama) dihitung otomatis oleh sistem saat disimpan, dan ditampilkan di tab Karyawan & Ringkasan.</div>
       </div>
       <div class="actions-row">
         <button class="btn" onclick="saveTransaksi()">Simpan</button>
@@ -211,13 +227,36 @@
         </select>
       </div>
       <div class="field">
-        <label>Saldo Awal</label>
-        <input type="number" id="kySaldoAwal">
-        <div class="hint">Positif = dia masih hutang ke owner, negatif = owner hutang ke dia.</div>
+        <label>Setoran Sebelumnya</label>
+        <input type="number" id="kySetoranSebelumnya">
+        <div class="hint">Otomatis ter-update tiap kali input nominal transfer/pembayaran setoran. Positif = dia masih hutang ke owner, negatif = owner hutang ke dia.</div>
       </div>
       <div class="actions-row">
         <button class="btn" onclick="saveKaryawanEdit()">Simpan</button>
         <button class="btn secondary" onclick="closeModal('modalKaryawan')">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KONEKSI SPREADSHEET -->
+<div class="modal-bg" id="modalKoneksi">
+  <div class="modal">
+    <h3>Hubungkan ke Spreadsheet</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label>URL Web App (Apps Script)</label>
+        <input id="koneksiUrl" placeholder="https://script.google.com/macros/s/XXXXXXXXXXXX/exec">
+        <div class="hint">
+          Diisi hanya kalau halaman ini di-hosting di luar Apps Script (misal GitHub Pages).<br>
+          Cara ambil URL-nya: buka project Apps Script → tombol <b>Deploy</b> → <b>Manage deployments</b> → salin "Web app URL".<br>
+          Kalau halaman ini dibuka langsung dari Apps Script, isian ini tidak diperlukan.
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn" onclick="simpanKoneksi()">Simpan & Tes Koneksi</button>
+        <button class="btn danger" onclick="hapusKoneksi()">Hapus Koneksi</button>
+        <button class="btn secondary" onclick="closeModal('modalKoneksi')">Tutup</button>
       </div>
     </div>
   </div>
@@ -232,22 +271,29 @@
 
 <script>
 /* ================= KONFIGURASI KONEKSI ================= */
-// Kosongkan jika file ini dijalankan LANGSUNG dari Apps Script (sebagai Index.html) - default, tidak perlu diubah.
-// Jika file ini di-upload ke GitHub Pages / hosting lain, isi dengan URL Web App hasil Deploy Apps Script,
-// contoh: 'https://script.google.com/macros/s/XXXXXXXXXXXX/exec'
+// Kalau file ini dijalankan LANGSUNG dari Apps Script (sebagai Index.html), koneksi otomatis
+// pakai google.script.run, tidak perlu isi apa-apa di sini.
+// Kalau file ini di-hosting di luar (GitHub Pages, dll), isi URL Web App lewat tombol
+// "🔗 Hubungkan Spreadsheet" di halaman - URL-nya disimpan di localStorage browser,
+// jadi tidak perlu edit kode ini secara manual.
+const LS_API_URL_KEY = 'ktiPayrollApiUrl';
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbxtKX9FHEvmQjZb73butqDu9hhZJwhAr0HWpRvE3RpELi6lr-6akTyP5MEOa9MhLiyBhA/exec'
+  API_URL: localStorage.getItem(LS_API_URL_KEY) || ''
 };
+
+function isDalamAppsScript(){
+  return typeof google !== 'undefined' && google.script && google.script.run;
+}
 
 function callApi(action, params) {
   return new Promise((resolve, reject) => {
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
+    if (isDalamAppsScript()) {
       google.script.run
         .withSuccessHandler(res => (res && res.ok) ? resolve(res.data) : reject(new Error((res && res.error) || 'Unknown error')))
         .withFailureHandler(err => reject(err))
         .apiRouter(action, params || null);
     } else {
-      if (!CONFIG.API_URL) { reject(new Error('API_URL belum diisi di CONFIG pada Index.html.')); return; }
+      if (!CONFIG.API_URL) { reject(new Error('Belum terhubung ke spreadsheet. Klik tombol "🔗 Hubungkan Spreadsheet" dulu.')); return; }
       fetch(CONFIG.API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
@@ -258,6 +304,54 @@ function callApi(action, params) {
       .catch(reject);
     }
   });
+}
+
+/* ===== KONEKSI SPREADSHEET (tombol Hubungkan) ===== */
+function updateConnStatus(){
+  const el = document.getElementById('connStatus');
+  const btn = document.getElementById('btnHubungkan');
+  if (isDalamAppsScript()) {
+    el.textContent = '🟢 Terhubung langsung ke Apps Script (tidak perlu setting URL)';
+    el.className = 'ok';
+    btn.style.display = 'none';
+  } else if (CONFIG.API_URL) {
+    el.textContent = '🟢 Terhubung ke: ' + CONFIG.API_URL;
+    el.className = 'ok';
+    btn.textContent = '🔗 Ganti Koneksi';
+  } else {
+    el.textContent = '🔴 Belum terhubung ke spreadsheet';
+    el.className = 'bad';
+    btn.textContent = '🔗 Hubungkan Spreadsheet';
+  }
+}
+function openKoneksiModal(){
+  document.getElementById('koneksiUrl').value = CONFIG.API_URL || '';
+  document.getElementById('modalKoneksi').classList.add('show');
+}
+function simpanKoneksi(){
+  const url = document.getElementById('koneksiUrl').value.trim();
+  if(!url){ showToast('Isi URL Web App dulu'); return; }
+  CONFIG.API_URL = url;
+  localStorage.setItem(LS_API_URL_KEY, url);
+  updateConnStatus();
+  showToast('Menguji koneksi...');
+  callApi('getKaryawanList').then(list=>{
+    karyawanList = list;
+    populateKaryawanSelect();
+    populateFilterNama();
+    showToast('Berhasil terhubung ke spreadsheet!');
+    closeModal('modalKoneksi');
+    refreshAll();
+  }).catch(err=>{
+    showToast('Gagal terhubung: '+err.message);
+  });
+}
+function hapusKoneksi(){
+  CONFIG.API_URL = '';
+  localStorage.removeItem(LS_API_URL_KEY);
+  document.getElementById('koneksiUrl').value = '';
+  updateConnStatus();
+  showToast('Koneksi dihapus');
 }
 
 let karyawanList = [];
@@ -336,7 +430,7 @@ function loadSummary(){
     start: start || undefined, end: end || undefined, karyawanId: karyawanId || undefined
   } : null;
 
-  callApi('getSummary', currentFilter).then(renderSummary).catch(err=>showToast('Error: '+err.message));
+  callApi('getSummaryPerKaryawan', currentFilter).then(renderSummaryPerKaryawan).catch(err=>showToast('Error: '+err.message));
   callApi('getTransaksiList', currentFilter).then(renderLedger).catch(err=>showToast('Error: '+err.message));
 }
 function resetFilter(){
@@ -346,15 +440,45 @@ function resetFilter(){
   currentFilter = null;
   loadSummary();
 }
-function renderSummary(s){
-  const mpClass = s.minusPositif < 0 ? 'minus' : 'plus';
-  const mpLabel = s.minusPositif < 0 ? 'Owner Hutang ke Teknisi/Korlap' : 'Teknisi/Korlap Hutang ke Owner';
-  document.getElementById('summaryGrid').innerHTML = `
-    <div class="summary-item"><div class="label">1. Jumlah Omset</div><div class="value">${fmtRp(s.jumlahOmset)}</div></div>
-    <div class="summary-item"><div class="label">2. ${mpLabel}</div><div class="value ${mpClass}">${fmtRp(Math.abs(s.minusPositif))}</div></div>
-    <div class="summary-item"><div class="label">3. Jumlah Sudah Transfer</div><div class="value">${fmtRp(s.jumlahTransfer)}</div></div>
-    <div class="summary-item"><div class="label">4. Profit</div><div class="value ${s.profit<0?'minus':'plus'}">${fmtRp(s.profit)}</div></div>
-  `;
+// Ringkasan per karyawan: omset, setoran kotor, komisi korlap (otomatis kalau Korlap),
+// diskon, transfer, setoran sebelumnya (muncul kalau ada), total setoran + aksi.
+function renderSummaryPerKaryawan(list){
+  const grid = document.getElementById('summaryGrid');
+  if(!list.length){ grid.innerHTML = '<div class="empty">Tidak ada data untuk filter ini</div>'; return; }
+  grid.innerHTML = list.map(k=>{
+    const isKorlap = k.status === 'Korlap';
+    const sisa = k.saldoBerjalan;
+    const lunas = sisa <= 0;
+    const transferInfo = k.totalTransfer > 0
+      ? ('Sudah transfer ' + fmtRp(k.totalTransfer))
+      : 'Belum ada transfer';
+    const sisaInfo = lunas ? ' · Lunas' : (' · Sisa ' + fmtRp(sisa));
+    return `<div class="kcard">
+      <div class="kcard-head">
+        <div>
+          <div class="kcard-nama">${k.nama}</div>
+          <span class="badge ${isKorlap?'korlap':'teknisi'}">${k.status}</span>
+        </div>
+        <span class="badge ${lunas?'lunas':'belum'}">${lunas?'Lunas':'Belum Lunas'}</span>
+      </div>
+      <div class="kcard-rows">
+        <div class="kcard-row"><span>Omset</span><b>${fmtRp(k.totalOmset)}</b></div>
+        <div class="kcard-row"><span>Setoran Kotor</span><b>${fmtRp(k.totalSetoran)}</b></div>
+        ${isKorlap?`<div class="kcard-row"><span>Komisi Korlap (5%)</span><b>-${fmtRp(k.totalKomisi)}</b></div>`:''}
+        <div class="kcard-row"><span>Diskon</span><b>-${fmtRp(k.totalDiskon)}</b></div>
+        <div class="kcard-row"><span>Transfer</span><b>-${fmtRp(k.totalTransfer)}</b></div>
+        ${k.setoranSebelumnya ? `<div class="kcard-row"><span>Setoran Sebelumnya</span><b>${fmtRp(k.setoranSebelumnya)}</b></div>` : ''}
+        <div class="kcard-row total"><span>Total Setoran</span><b class="${sisa>0?'minus':'plus'}">${fmtRp(sisa)}</b></div>
+      </div>
+      <div class="kcard-transfer">${transferInfo}${sisaInfo}</div>
+      <div class="actions-row">
+        <button class="btn small" style="background:#16a34a;color:#fff;" onclick="lunaskan('${k.karyawanId}','${k.nama.replace(/'/g,"&#39;")}')">Transfer</button>
+        <button class="btn secondary small" onclick='printKaryawanCard(${JSON.stringify(k).replace(/'/g,"&#39;")})'>🖼️ Print</button>
+        <button class="btn secondary small" onclick="editKaryawanFromSummary('${k.karyawanId}')">Edit</button>
+        <button class="btn danger small" onclick="delKaryawan('${k.karyawanId}')">Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function renderLedger(rows){
   const body = document.querySelector('#ledgerTable tbody');
@@ -387,32 +511,6 @@ function renderLedger(rows){
     </tr>`;
   }).join('');
 }
-function printRingkasan(){
-  const summaryHtml = document.getElementById('summaryGrid').innerHTML;
-  const ledgerHtml = document.getElementById('ledgerTable').outerHTML;
-  const namaFilter = document.getElementById('filterNama');
-  const namaLabel = namaFilter.value ? namaFilter.options[namaFilter.selectedIndex].textContent : 'Semua Karyawan';
-  const start = document.getElementById('filterStart').value;
-  const end = document.getElementById('filterEnd').value;
-  const periode = (start||end) ? `${start||'...'} s/d ${end||'...'}` : 'Semua Tanggal';
-
-  const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;background:#fff;padding:24px;font-family:Arial,sans-serif;';
-  el.innerHTML = `
-    <h2 style="margin:0;color:#0f766e;text-align:center;">Kurasin Toren Indonesia</h2>
-    <p style="text-align:center;font-size:12px;color:#444;margin:4px 0;">Jl Amanah 1 No 54, Pd Petir - Depok · 0822-1380-7278</p>
-    <hr style="border:none;border-top:1px dashed #ccc;margin:14px 0;">
-    <h3 style="margin:0 0 4px;font-size:14px;">Ringkasan Payroll</h3>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">Filter: ${namaLabel} · ${periode}</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px;">${summaryHtml}</div>
-    <h3 style="margin:0 0 8px;font-size:14px;">Data Setoran</h3>
-    <div style="font-size:11px;">${ledgerHtml}</div>
-  `;
-  document.body.appendChild(el);
-  shareOrDownloadElement(el, 'Ringkasan_KurasinToren_'+Date.now()+'.png');
-  setTimeout(()=>el.remove(), 3000);
-}
-
 /* ===== KARYAWAN ===== */
 function loadKaryawan(){
   callApi('getKaryawanList').then(list=>{
@@ -424,7 +522,7 @@ function loadKaryawan(){
         <td>${k.nama}</td>
         <td><span class="badge ${k.status==='Korlap'?'korlap':'teknisi'}">${k.status}</span></td>
         <td>${(k.persen*100).toFixed(0)}%</td>
-        <td>${fmtRp(k.saldoAwal)}</td>
+        <td>${fmtRp(k.setoranSebelumnya)}</td>
         <td>
           <div class="actions-row">
             <button class="btn secondary small" onclick='editKaryawan(${JSON.stringify(k).replace(/'/g,"&#39;")})'>Edit</button>
@@ -439,11 +537,11 @@ function loadKaryawan(){
 function addKaryawanFn(){
   const nama = document.getElementById('karyawanNama').value.trim();
   const status = document.getElementById('karyawanStatus').value;
-  const saldoAwal = document.getElementById('karyawanSaldoAwal').value;
+  const setoranSebelumnya = document.getElementById('karyawanSetoranSebelumnya').value;
   if(!nama){ showToast('Nama wajib diisi'); return; }
-  callApi('addKaryawan', {nama, status, saldoAwal}).then(()=>{
+  callApi('addKaryawan', {nama, status, setoranSebelumnya}).then(()=>{
     document.getElementById('karyawanNama').value='';
-    document.getElementById('karyawanSaldoAwal').value=0;
+    document.getElementById('karyawanSetoranSebelumnya').value=0;
     showToast('Karyawan ditambahkan');
     loadKaryawan();
   }).catch(err=>showToast('Error: '+err.message));
@@ -452,7 +550,7 @@ function editKaryawan(k){
   document.getElementById('kyId').value = k.id;
   document.getElementById('kyNama').value = k.nama;
   document.getElementById('kyStatus').value = k.status;
-  document.getElementById('kySaldoAwal').value = k.saldoAwal;
+  document.getElementById('kySetoranSebelumnya').value = k.setoranSebelumnya;
   document.getElementById('modalKaryawan').classList.add('show');
 }
 function saveKaryawanEdit(){
@@ -460,7 +558,7 @@ function saveKaryawanEdit(){
     id: document.getElementById('kyId').value,
     nama: document.getElementById('kyNama').value.trim(),
     status: document.getElementById('kyStatus').value,
-    saldoAwal: document.getElementById('kySaldoAwal').value
+    setoranSebelumnya: document.getElementById('kySetoranSebelumnya').value
   };
   if(!payload.nama){ showToast('Nama wajib diisi'); return; }
   callApi('updateKaryawan', payload).then(()=>{
@@ -480,7 +578,7 @@ function loadTransaksi(){
 }
 function renderTransaksi(rows){
   const body = document.querySelector('#transaksiTable tbody');
-  if(!rows.length){ body.innerHTML='<tr><td colspan="12" class="empty">Belum ada transaksi</td></tr>'; return; }
+  if(!rows.length){ body.innerHTML='<tr><td colspan="11" class="empty">Belum ada transaksi</td></tr>'; return; }
   body.innerHTML = rows.map(r=>{
     const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID');
     const isKorlap = r.Status === 'Korlap';
@@ -495,7 +593,6 @@ function renderTransaksi(rows){
       <td>${fmtRp(r.Diskon)}</td>
       <td>${fmtRp(r.Transfer)}</td>
       <td><b>${fmtRp(r.JumlahSetoran)}</b></td>
-      <td><b>${fmtRp(r.TotalSetoran)}</b></td>
       <td>
         <div class="actions-row">
           <button class="btn secondary small" onclick='editTransaksi(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Edit</button>
@@ -600,6 +697,37 @@ function lunaskan(karyawanId, nama){
   }).catch(err=>showToast('Error: '+err.message));
 }
 
+/* ===== PRINT / SHARE SEBAGAI GAMBAR (ringkasan per karyawan) ===== */
+function printKaryawanCard(k){
+  const isKorlap = k.status === 'Korlap';
+  const sisa = k.saldoBerjalan;
+  document.getElementById('receiptContent').innerHTML = `
+    <h2>Kurasin Toren Indonesia</h2>
+    <p class="center">Jl Amanah 1 No 54, Pd Petir - Depok</p>
+    <p class="center">0822-1380-7278</p>
+    <hr>
+    <p><b>Ringkasan Setoran - ${k.nama} (${k.status})</b></p>
+    <table>
+      <tr><td>Omset</td><td>: ${fmtRp(k.totalOmset)}</td></tr>
+      <tr><td>Setoran Kotor</td><td>: ${fmtRp(k.totalSetoran)}</td></tr>
+      ${isKorlap?`<tr><td>Komisi Korlap (5%)</td><td>: -${fmtRp(k.totalKomisi)}</td></tr>`:''}
+      <tr><td>Diskon</td><td>: -${fmtRp(k.totalDiskon)}</td></tr>
+      <tr><td>Transfer</td><td>: -${fmtRp(k.totalTransfer)}</td></tr>
+      ${k.setoranSebelumnya ? `<tr><td>Setoran Sebelumnya</td><td>: ${fmtRp(k.setoranSebelumnya)}</td></tr>`:''}
+    </table>
+    <hr>
+    <table><tr><td class="total">TOTAL SETORAN</td><td class="total">${fmtRp(sisa)}</td></tr></table>
+    <p style="margin-top:10px;color:#888;">Status: ${sisa<=0?'Lunas':'Belum Lunas'}</p>
+  `;
+  const node = document.getElementById('receiptContent');
+  shareOrDownloadElement(node, 'Ringkasan_'+k.nama+'_'+Date.now()+'.png');
+}
+function editKaryawanFromSummary(id){
+  const k = karyawanList.find(x=>x.id===id);
+  if(k) editKaryawan(k);
+  else showToast('Data karyawan belum termuat, coba lagi');
+}
+
 /* ===== PRINT / SHARE SEBAGAI GAMBAR (per transaksi) ===== */
 function printReceipt(r){
   const tgl = new Date(r.Tanggal).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
@@ -631,6 +759,11 @@ function printReceipt(r){
 
 /* INIT */
 window.onload = function(){
+  updateConnStatus();
+  if (!isDalamAppsScript() && !CONFIG.API_URL) {
+    showToast('Klik "🔗 Hubungkan Spreadsheet" untuk mulai');
+    return;
+  }
   loadSummary();
   callApi('getKaryawanList').then(list=>{
     karyawanList=list;
