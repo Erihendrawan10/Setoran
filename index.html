@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional v11</title>
+<title>Keuangan Operasional v12</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -47,7 +47,7 @@
     {{ toast.message }}
   </div>
 
-  <!-- RINGKASAN DATA (CARD BARU VERSI 11) -->
+  <!-- RINGKASAN DATA (VERSI 11) -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
     <div class="bg-white p-4 rounded-xl shadow-sm border">
       <p class="text-xs text-gray-500">Total Omset</p>
@@ -61,14 +61,12 @@
       <p class="text-xs text-gray-500">Profit Owner</p>
       <p class="text-lg font-bold text-purple-600">{{ formatRupiah(summary.totalOwnerShare) }}</p>
     </div>
-    <!-- CARD TAMBAHAN 1 -->
     <div class="bg-white p-4 rounded-xl shadow-sm border">
       <p class="text-xs text-gray-500">Total Setoran Akhir</p>
       <p class="text-lg font-bold" :class="summary.totalSetoranAkhirAll >= 0 ? 'text-amber-600' : 'text-red-600'">
         {{ formatRupiah(summary.totalSetoranAkhirAll) }}
       </p>
     </div>
-    <!-- CARD TAMBAHAN 2 -->
     <div class="bg-white p-4 rounded-xl shadow-sm border bg-emerald-50/30">
       <p class="text-xs text-emerald-700 font-medium">Profit Perusahaan Periode</p>
       <p class="text-lg font-bold text-emerald-600">{{ formatRupiah(summary.profitPerusahaanPeriode) }}</p>
@@ -197,8 +195,13 @@
             </div>
           </div>
 
-          <div class="no-export pt-2 border-t space-y-1">
-            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
+          <div class="no-export pt-2 border-t space-y-1.5">
+            <!-- FITUR TOMBOL SETORAN BARU (MENGGANTI SETORAN SEBELUMNYA) -->
+            <button @click="setoranBaruOverride(k)" class="w-full text-center text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded shadow-sm">
+              🔄 Setoran Baru (Ganti Setoran Sebelumnya)
+            </button>
+
+            <label class="text-[10px] text-gray-400 block pt-1">Setoran Sudah Dibayar:</label>
             <div class="flex gap-1.5">
               <input type="number" v-model.number="k.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
               <button @click="prosesBayar(k)" class="bg-blue-600 text-white text-[11px] font-medium px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
@@ -207,7 +210,7 @@
             </div>
 
             <button v-if="k.hasPaymentLog" @click="batalPembayaran(k)" class="w-full text-center text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-medium py-1 rounded mt-1">
-              ↩️ Batal Pembayaran Last (Kembalikan Ke Semula)
+              ↩️ Batal Pembayaran Last
             </button>
           </div>
         </div>
@@ -265,8 +268,13 @@
             </div>
           </div>
 
-          <div class="no-export pt-2 border-t space-y-1">
-            <label class="text-[10px] text-gray-400 block">Setoran Sudah Dibayar:</label>
+          <div class="no-export pt-2 border-t space-y-1.5">
+            <!-- FITUR TOMBOL SETORAN BARU (MENGGANTI SETORAN SEBELUMNYA) -->
+            <button @click="setoranBaruOverride(t)" class="w-full text-center text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded shadow-sm">
+              🔄 Setoran Baru (Ganti Setoran Sebelumnya)
+            </button>
+
+            <label class="text-[10px] text-gray-400 block pt-1">Setoran Sudah Dibayar:</label>
             <div class="flex gap-1.5">
               <input type="number" v-model.number="t.sudahDibayar" placeholder="0" class="w-full border rounded px-2 py-1 text-xs">
               <button @click="prosesBayar(t)" class="bg-blue-600 text-white text-[11px] font-medium px-3 py-1 rounded hover:bg-blue-700 whitespace-nowrap">
@@ -275,7 +283,7 @@
             </div>
 
             <button v-if="t.hasPaymentLog" @click="batalPembayaran(t)" class="w-full text-center text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 font-medium py-1 rounded mt-1">
-              ↩️ Batal Pembayaran Last (Kembalikan Ke Semula)
+              ↩️ Batal Pembayaran Last
             </button>
           </div>
         </div>
@@ -325,13 +333,13 @@
     </div>
   </div>
 
-  <!-- FOOTER DENGAN VERSI (v11) -->
+  <!-- FOOTER -->
   <footer class="text-center pt-4 border-t text-gray-400 text-[11px] flex justify-between items-center">
     <span>Aplikasi Keuangan Operasional</span>
     <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v11</span>
   </footer>
 
-  <!-- MODAL: KONEKSI -->
+  <!-- MODAL KONEKSI -->
   <div v-if="showConfig" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-lg p-5 w-full max-w-sm">
       <h3 class="font-bold text-sm text-gray-800 mb-2">Koneksi Apps Script</h3>
@@ -343,7 +351,7 @@
     </div>
   </div>
 
-  <!-- MODAL: PEKERJA -->
+  <!-- MODAL PEKERJA -->
   <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-lg p-5 w-full max-w-md">
       <h3 class="font-bold text-sm text-gray-800 mb-3">Tambah Pekerja</h3>
@@ -451,6 +459,28 @@ createApp({
         this.checkConnection();
         this.loadData();
       }
+    },
+
+    setoranBaruOverride(worker) {
+      const totalAkhir = Number(worker.totalSetoranAkhir) || 0;
+      const pesan = `Ganti angka Setoran Sebelumnya milik ${worker.nama} menjadi ${this.formatRupiah(totalAkhir)}?`;
+      if (!confirm(pesan)) return;
+
+      this.apiPost('overrideSetoranSebelumnya', {
+        nama: worker.nama,
+        nilaiBaru: totalAkhir
+      })
+      .then(res => {
+        if (res && res.error) {
+          this.showToast(res.error, 'error');
+        } else {
+          this.showToast('Setoran Sebelumnya berhasil diganti!');
+          this.loadData();
+        }
+      })
+      .catch(err => {
+        this.showToast('Gagal memproses setoran baru: ' + err.message, 'error');
+      });
     },
 
     prosesBayar(worker) {
