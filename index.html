@@ -150,7 +150,6 @@
             <p class="font-bold text-gray-800 text-sm">{{ k.nama }}</p>
             <p class="text-[10px] text-gray-400">Korlap</p>
           </div>
-          <!-- TAMPILAN TANGGAL FILTER DI CARD -->
           <div v-if="labelPeriodeFilter" class="text-right">
             <span class="bg-blue-50 border border-blue-200 text-blue-700 text-[9px] font-semibold px-2 py-0.5 rounded-md block">
               📅 {{ labelPeriodeFilter }}
@@ -174,7 +173,7 @@
           </div>
           <hr class="my-1">
           
-          <!-- TOTAL SETORAN AKHIR DENGAN INDIKATOR WARNA -->
+          <!-- TOTAL SETORAN AKHIR (HIJAU JIKA +, MERAH JIKA -) -->
           <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
             <div class="flex items-center gap-1">
@@ -220,7 +219,6 @@
             <p class="font-bold text-gray-800 text-sm">{{ t.nama }}</p>
             <p class="text-[10px] text-gray-400">Teknisi</p>
           </div>
-          <!-- TAMPILAN TANGGAL FILTER DI CARD -->
           <div v-if="labelPeriodeFilter" class="text-right">
             <span class="bg-blue-50 border border-blue-200 text-blue-700 text-[9px] font-semibold px-2 py-0.5 rounded-md block">
               📅 {{ labelPeriodeFilter }}
@@ -241,7 +239,7 @@
           </div>
           <hr class="my-1">
 
-          <!-- TOTAL SETORAN AKHIR DENGAN INDIKATOR WARNA -->
+          <!-- TOTAL SETORAN AKHIR (HIJAU JIKA +, MERAH JIKA -) -->
           <div class="flex justify-between items-center font-bold text-sm my-2">
             <span>Total Setoran Akhir</span>
             <div class="flex items-center gap-1">
@@ -434,54 +432,68 @@ createApp({
     },
 
     prosesBayar(worker) {
-      const dibayar = Number(worker.sudahDibayar) || 0;
-      
-      // Kelebihan atau kekurangan otomatis dimasukkan ke sisa setoran berikutnya
-      const sisaAtauKelebihanBaru = worker.totalSetoranAkhir - dibayar;
-      
-      // Reset komisi korlap jika status pekerja adalah Korlap
-      if (worker.peran === 'Korlap') {
-        worker.komisiKorlap = 0;
+      let dibayar = Number(worker.sudahDibayar) || 0;
+      if (dibayar === 0) {
+        this.showToast('Masukkan nominal pembayaran terlebih dahulu', 'error');
+        return;
       }
 
-      worker.setoranSebelumnya = sisaAtauKelebihanBaru;
-      worker.sudahDibayar = 0;
+      const totalAkhirSaatIni = Number(worker.totalSetoranAkhir) || 0;
+      if (totalAkhirSaatIni < 0 && dibayar > 0) {
+        dibayar = -dibayar;
+      }
 
-      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: sisaAtauKelebihanBaru })
-        .then(res => {
-          if (res && res.error) {
-            this.showToast(res.error, 'error');
-          } else {
-            this.showToast('Pembayaran berhasil disimpan. Saldo otomatis diperbarui!');
-            this.loadData();
-          }
-        })
-        .catch(() => {
-          this.showToast('Gagal menyimpan pembayaran', 'error');
-        });
+      const sisaBaru = totalAkhirSaatIni - dibayar;
+      const resetKomisi = worker.peran === 'Korlap' ? true : false;
+
+      this.apiPost('updateWorkerBalance', { 
+        nama: worker.nama, 
+        setoranSebelumnya: sisaBaru,
+        resetKomisi: resetKomisi
+      })
+      .then(res => {
+        if (res && res.error) {
+          this.showToast(res.error, 'error');
+        } else {
+          this.showToast('Pembayaran berhasil disimpan!');
+          this.loadData();
+        }
+      })
+      .catch(err => {
+        this.showToast('Gagal menyimpan pembayaran: ' + err.message, 'error');
+      });
     },
 
     editTotalSetoranAkhir(worker) {
-      const inputBaru = prompt(`Edit Total Setoran Akhir untuk ${worker.nama}:`, worker.totalSetoranAkhir || 0);
-      if (inputBaru === null) return;
-
-      const totalAkhirBaru = Number(inputBaru) || 0;
+      const nilaiLama = Number(worker.totalSetoranAkhir) || 0;
+      const inputBaru = prompt(`Edit Total Setoran Akhir untuk ${worker.nama}:`, nilaiLama);
       
-      // Menghitung penyesuaian untuk Setoran Sebelumnya agar Total Akhir sesuai input user
-      const setoranSebelumnyaBaru = totalAkhirBaru - worker.totalSetoranPeriodeIni;
+      if (inputBaru === null || inputBaru.trim() === '') return;
 
-      this.apiPost('updateWorkerBalance', { nama: worker.nama, setoranSebelumnya: setoranSebelumnyaBaru })
-        .then(res => {
-          if (res && res.error) {
-            this.showToast(res.error, 'error');
-          } else {
-            this.showToast('Total Setoran Akhir berhasil diubah!');
-            this.loadData();
-          }
-        })
-        .catch(() => {
-          this.showToast('Gagal memperbarui nilai', 'error');
-        });
+      const totalAkhirBaru = Number(inputBaru);
+      if (isNaN(totalAkhirBaru)) {
+        this.showToast('Nominal harus berupa angka', 'error');
+        return;
+      }
+      
+      const setoranPeriodeIni = Number(worker.totalSetoranPeriodeIni) || 0;
+      const setoranSebelumnyaBaru = totalAkhirBaru - setoranPeriodeIni;
+
+      this.apiPost('updateWorkerBalance', { 
+        nama: worker.nama, 
+        setoranSebelumnya: setoranSebelumnyaBaru 
+      })
+      .then(res => {
+        if (res && res.error) {
+          this.showToast(res.error, 'error');
+        } else {
+          this.showToast('Total Setoran Akhir berhasil diubah!');
+          this.loadData();
+        }
+      })
+      .catch(err => {
+        this.showToast('Gagal memperbarui nilai: ' + err.message, 'error');
+      });
     },
 
     apiGet(action, params = {}) {
