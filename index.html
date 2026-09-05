@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional v15</title>
+<title>Keuangan Operasional v16</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -329,7 +329,7 @@
   <!-- FOOTER -->
   <footer class="text-center pt-4 border-t text-gray-400 text-[11px] flex justify-between items-center">
     <span>Aplikasi Keuangan Operasional</span>
-    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v15</span>
+    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v16</span>
   </footer>
 
   <!-- MODAL KONEKSI -->
@@ -373,8 +373,8 @@
 </div>
 
 <script>
-// MASUKKAN URL APPS SCRIPT ANDA DI DI BAWAH INI SEBAGAI DEFAULT:
-const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec';
+// PASTE URL APPS SCRIPT ANDA DI BAWAH INI:
+const DEFAULT_SCRIPT_URL = 'PASTE_URL_APPS_SCRIPT_BARU_ANDA_DI_SINI';
 
 const { createApp } = Vue;
 
@@ -425,7 +425,7 @@ createApp({
   },
   mounted() {
     this.tempUrl = this.scriptUrl;
-    if (this.scriptUrl && this.scriptUrl !== 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec') {
+    if (this.scriptUrl && this.scriptUrl !== 'PASTE_URL_APPS_SCRIPT_BARU_ANDA_DI_SINI') {
       this.checkConnection();
       this.loadData();
     } else {
@@ -434,7 +434,7 @@ createApp({
   },
   methods: {
     checkConnection() {
-      if (!this.scriptUrl || this.scriptUrl === 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec') { 
+      if (!this.scriptUrl || this.scriptUrl === 'PASTE_URL_APPS_SCRIPT_BARU_ANDA_DI_SINI') { 
         this.connectionStatus = 'offline'; 
         return; 
       }
@@ -478,7 +478,7 @@ createApp({
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Data berhasil disimpan! Total setoran akhir dipindah ke Setoran Sebelumnya & Omset di-reset.');
+          this.showToast('Data berhasil disimpan!');
           worker.sudahDibayar = 0;
           this.loadData();
         }
@@ -489,7 +489,7 @@ createApp({
     },
 
     batalPembayaran(worker) {
-      if (!confirm(`Batalkan pembayaran terakhir untuk ${worker.nama} dan kembalikan seluruh nilai seperti sebelum disimpan?`)) return;
+      if (!confirm(`Batalkan pembayaran terakhir untuk ${worker.nama}?`)) return;
 
       this.apiPost('cancelLastPayment', { nama: worker.nama })
       .then(res => {
@@ -537,23 +537,30 @@ createApp({
       });
     },
 
+    // DIBUAT AMAN UNTUK SEMUA HP DENGAN TEXT/PLAIN & NO-CACHE
     apiGet(action, params = {}) {
       const cleanUrl = this.scriptUrl.trim();
-      const qs = new URLSearchParams({ action, t: Date.now(), ...params }).toString();
-      return fetch(`${cleanUrl}?${qs}`, { cache: 'no-store' }).then(r => r.json());
+      const qs = new URLSearchParams({ action, _t: Date.now(), ...params }).toString();
+      return fetch(`${cleanUrl}?${qs}`, { 
+        method: 'GET',
+        cache: 'no-store',
+        redirect: 'follow'
+      }).then(r => r.json());
     },
+
     apiPost(action, payload = {}) {
       const cleanUrl = this.scriptUrl.trim();
       return fetch(cleanUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, ...payload }),
-        cache: 'no-store'
+        cache: 'no-store',
+        redirect: 'follow'
       }).then(r => r.json());
     },
 
     loadData() {
-      if (!this.scriptUrl || this.scriptUrl === 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec') return;
+      if (!this.scriptUrl || this.scriptUrl === 'PASTE_URL_APPS_SCRIPT_BARU_ANDA_DI_SINI') return;
       this.apiGet('getData', {
         startDate: this.filter.startDate,
         endDate: this.filter.endDate,
@@ -565,7 +572,9 @@ createApp({
         this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0, profitPerusahaanPeriode: 0 };
         this.rekapKorlap = res.rekapKorlap || [];
         this.rekapTeknisi = res.rekapTeknisi || [];
+        this.connectionStatus = 'online';
       }).catch(() => {
+        this.connectionStatus = 'offline';
         this.showToast('Gagal terhubung ke Apps Script.', 'error');
       });
     },
