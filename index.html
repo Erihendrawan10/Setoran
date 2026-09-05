@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional v12</title>
+<title>Keuangan Operasional</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -47,7 +47,7 @@
     {{ toast.message }}
   </div>
 
-  <!-- RINGKASAN DATA (VERSI 11) -->
+  <!-- RINGKASAN DATA -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
     <div class="bg-white p-4 rounded-xl shadow-sm border">
       <p class="text-xs text-gray-500">Total Omset</p>
@@ -196,7 +196,6 @@
           </div>
 
           <div class="no-export pt-2 border-t space-y-1.5">
-            <!-- FITUR TOMBOL SETORAN BARU (MENGGANTI SETORAN SEBELUMNYA) -->
             <button @click="setoranBaruOverride(k)" class="w-full text-center text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded shadow-sm">
               🔄 Setoran Baru (Ganti Setoran Sebelumnya)
             </button>
@@ -269,7 +268,6 @@
           </div>
 
           <div class="no-export pt-2 border-t space-y-1.5">
-            <!-- FITUR TOMBOL SETORAN BARU (MENGGANTI SETORAN SEBELUMNYA) -->
             <button @click="setoranBaruOverride(t)" class="w-full text-center text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded shadow-sm">
               🔄 Setoran Baru (Ganti Setoran Sebelumnya)
             </button>
@@ -336,7 +334,7 @@
   <!-- FOOTER -->
   <footer class="text-center pt-4 border-t text-gray-400 text-[11px] flex justify-between items-center">
     <span>Aplikasi Keuangan Operasional</span>
-    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v11</span>
+    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v12</span>
   </footer>
 
   <!-- MODAL KONEKSI -->
@@ -485,16 +483,9 @@ createApp({
 
     prosesBayar(worker) {
       let dibayar = Number(worker.sudahDibayar) || 0;
-      if (dibayar === 0) {
-        this.showToast('Masukkan nominal pembayaran terlebih dahulu', 'error');
-        return;
-      }
-
       const totalAkhirSaatIni = Number(worker.totalSetoranAkhir) || 0;
-      if (totalAkhirSaatIni < 0 && dibayar > 0) {
-        dibayar = -dibayar;
-      }
 
+      // SisaSaldo = TotalSetoranAkhir - NominalDibayar
       const sisaBaru = totalAkhirSaatIni - dibayar;
       const resetKomisi = worker.peran === 'Korlap' ? true : false;
 
@@ -508,12 +499,12 @@ createApp({
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Pembayaran berhasil disimpan!');
+          this.showToast('Setoran berhasil disimpan & di-reset ke setoran baru!');
           this.loadData();
         }
       })
       .catch(err => {
-        this.showToast('Gagal menyimpan pembayaran: ' + err.message, 'error');
+        this.showToast('Gagal menyimpan setoran: ' + err.message, 'error');
       });
     },
 
@@ -525,7 +516,7 @@ createApp({
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Pembayaran berhasil dibatalkan & kondisi dikembalikan!');
+          this.showToast('Pembayaran berhasil dibatalkan!');
           this.loadData();
         }
       })
