@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional</title>
+<title>Keuangan Operasional v12</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -461,7 +461,7 @@ createApp({
 
     setoranBaruOverride(worker) {
       const totalAkhir = Number(worker.totalSetoranAkhir) || 0;
-      const pesan = `Ganti angka Setoran Sebelumnya milik ${worker.nama} menjadi ${this.formatRupiah(totalAkhir)}?`;
+      const pesan = `Ganti Setoran Sebelumnya milik ${worker.nama} menjadi ${this.formatRupiah(totalAkhir)} & reset omset card rekap menjadi 0?`;
       if (!confirm(pesan)) return;
 
       this.apiPost('overrideSetoranSebelumnya', {
@@ -472,7 +472,7 @@ createApp({
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Setoran Sebelumnya berhasil diganti!');
+          this.showToast('Setoran Sebelumnya berhasil diganti & omset card ter-reset!');
           this.loadData();
         }
       })
@@ -499,7 +499,7 @@ createApp({
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Setoran berhasil disimpan & di-reset ke setoran baru!');
+          this.showToast('Setoran disimpan & omset card ter-reset!');
           this.loadData();
         }
       })
@@ -516,7 +516,7 @@ createApp({
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Pembayaran berhasil dibatalkan!');
+          this.showToast('Pembayaran dibatalkan!');
           this.loadData();
         }
       })
