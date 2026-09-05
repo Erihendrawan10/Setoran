@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional v14</title>
+<title>Keuangan Operasional v15</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -240,7 +240,6 @@
 
         <div class="space-y-1 text-xs text-gray-600">
           <div class="flex justify-between"><span>Total Omset</span><b>{{ formatRupiah(t.totalOmset) }}</b></div>
-          <!-- Hak Teknisi (45%) telah dihapus sesuai permintaan -->
           <div class="flex justify-between"><span>Transfer Masuk</span><span class="text-blue-600">{{ formatRupiah(t.totalTransfer) }}</span></div>
           <div class="flex justify-between"><span>Diskon</span><span class="text-amber-600">{{ formatRupiah(t.totalDiskon) }}</span></div>
           <hr class="my-1">
@@ -330,7 +329,7 @@
   <!-- FOOTER -->
   <footer class="text-center pt-4 border-t text-gray-400 text-[11px] flex justify-between items-center">
     <span>Aplikasi Keuangan Operasional</span>
-    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v14</span>
+    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v15</span>
   </footer>
 
   <!-- MODAL KONEKSI -->
@@ -374,12 +373,15 @@
 </div>
 
 <script>
+// MASUKKAN URL APPS SCRIPT ANDA DI DI BAWAH INI SEBAGAI DEFAULT:
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec';
+
 const { createApp } = Vue;
 
 createApp({
   data() {
     return {
-      scriptUrl: (localStorage.getItem('apps_script_url') || '').trim(),
+      scriptUrl: (localStorage.getItem('apps_script_url') || DEFAULT_SCRIPT_URL).trim(),
       tempUrl: '',
       connectionStatus: 'offline',
       showConfig: false,
@@ -422,7 +424,8 @@ createApp({
     }
   },
   mounted() {
-    if (this.scriptUrl) {
+    this.tempUrl = this.scriptUrl;
+    if (this.scriptUrl && this.scriptUrl !== 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec') {
       this.checkConnection();
       this.loadData();
     } else {
@@ -431,7 +434,10 @@ createApp({
   },
   methods: {
     checkConnection() {
-      if (!this.scriptUrl) { this.connectionStatus = 'offline'; return; }
+      if (!this.scriptUrl || this.scriptUrl === 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec') { 
+        this.connectionStatus = 'offline'; 
+        return; 
+      }
       this.connectionStatus = 'checking';
       this.apiGet('getWorkers')
         .then(res => { this.connectionStatus = res && !res.error ? 'online' : 'offline'; })
@@ -533,20 +539,21 @@ createApp({
 
     apiGet(action, params = {}) {
       const cleanUrl = this.scriptUrl.trim();
-      const qs = new URLSearchParams({ action, ...params }).toString();
-      return fetch(`${cleanUrl}?${qs}`).then(r => r.json());
+      const qs = new URLSearchParams({ action, t: Date.now(), ...params }).toString();
+      return fetch(`${cleanUrl}?${qs}`, { cache: 'no-store' }).then(r => r.json());
     },
     apiPost(action, payload = {}) {
       const cleanUrl = this.scriptUrl.trim();
       return fetch(cleanUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, ...payload })
+        body: JSON.stringify({ action, ...payload }),
+        cache: 'no-store'
       }).then(r => r.json());
     },
 
     loadData() {
-      if (!this.scriptUrl) return;
+      if (!this.scriptUrl || this.scriptUrl === 'https://script.google.com/macros/s/AKfycbyEkE_zl6Ydch1MN12Fvybdhl2j1_DQ7lD17g9nlmeQcXktoPfoGqoW7nvaKSzi3xD5Jg/exec') return;
       this.apiGet('getData', {
         startDate: this.filter.startDate,
         endDate: this.filter.endDate,
