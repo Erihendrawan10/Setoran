@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keuangan Operasional v16</title>
+<title>Keuangan Operasional v17</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -14,7 +14,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen pb-12">
 
-<div id="app" v-cloak class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+<div id="app" v-cloak class="max-w-6xl mx-auto px-4 py-6 space-y-4">
 
   <!-- HEADER -->
   <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border">
@@ -47,48 +47,17 @@
     {{ toast.message }}
   </div>
 
-  <!-- MENU TAB -->
-  <div class="flex border-b border-gray-200 bg-white rounded-xl shadow-sm overflow-x-auto">
-    <button @click="activeTab = 'ringkasan'" class="px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2"
-      :class="activeTab === 'ringkasan' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
-      📊 Ringkasan
+  <!-- TAB NAV -->
+  <nav class="bg-white rounded-xl shadow-sm border p-1.5 flex flex-wrap gap-1 sticky top-2 z-10">
+    <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+      class="flex-1 min-w-[120px] text-xs font-semibold px-3 py-2 rounded-lg transition"
+      :class="activeTab === tab.id ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'">
+      {{ tab.label }}
     </button>
-    <button @click="activeTab = 'input'" class="px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2"
-      :class="activeTab === 'input' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
-      ✏️ Input Transaksi
-    </button>
-    <button @click="activeTab = 'setoran'" class="px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2"
-      :class="activeTab === 'setoran' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
-      💳 Setoran Korlap/Teknisi
-    </button>
-    <button @click="activeTab = 'daftar'" class="px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2"
-      :class="activeTab === 'daftar' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
-      📋 Daftar Transaksi
-    </button>
-    <button @click="activeTab = 'thr'" class="px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2"
-      :class="activeTab === 'thr' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
-      🎁 Bonus THR
-    </button>
-  </div>
+  </nav>
 
-  <!-- TAB 1: RINGKASAN DATA -->
-  <div v-if="activeTab === 'ringkasan'" class="space-y-4">
-    <!-- FILTER RINGKASAN -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border space-y-3">
-      <span class="text-xs font-bold text-gray-700">Filter Data</span>
-      <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
-        <input type="date" v-model="filter.startDate" class="border rounded-lg px-3 py-1.5 text-xs">
-        <input type="date" v-model="filter.endDate" class="border rounded-lg px-3 py-1.5 text-xs">
-        <select v-model="filter.worker" class="border rounded-lg px-3 py-1.5 text-xs">
-          <option value="">Semua Pekerja</option>
-          <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
-        </select>
-        <div class="flex gap-2">
-          <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium">Terapkan</button>
-          <button @click="resetFilter" class="px-3 py-1.5 border rounded-lg text-xs">Reset</button>
-        </div>
-      </div>
-    </div>
+  <!-- ===================== TAB: RINGKASAN ===================== -->
+  <div v-show="activeTab === 'ringkasan'" class="space-y-4">
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="bg-white p-4 rounded-xl shadow-sm border">
@@ -96,12 +65,12 @@
         <p class="text-lg font-bold text-gray-800">{{ formatRupiah(summary.totalOmset) }}</p>
       </div>
       <div class="bg-white p-4 rounded-xl shadow-sm border">
-        <p class="text-xs text-gray-500">Transfer Masuk</p>
-        <p class="text-lg font-bold text-blue-600">{{ formatRupiah(summary.totalTransferMasuk) }}</p>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm border">
         <p class="text-xs text-gray-500">Profit Owner</p>
         <p class="text-lg font-bold text-purple-600">{{ formatRupiah(summary.totalOwnerShare) }}</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border">
+        <p class="text-xs text-gray-500">Transfer Masuk</p>
+        <p class="text-lg font-bold text-blue-600">{{ formatRupiah(summary.totalTransferMasuk) }}</p>
       </div>
       <div class="bg-white p-4 rounded-xl shadow-sm border">
         <p class="text-xs text-gray-500">Total Setoran Akhir</p>
@@ -110,10 +79,32 @@
         </p>
       </div>
     </div>
+
+    <!-- FILTER (default tersembunyi) -->
+    <div class="bg-white rounded-xl shadow-sm border">
+      <button @click="showFilter = !showFilter" class="w-full flex justify-between items-center p-3 text-xs font-bold text-gray-700">
+        <span>🔍 Filter Tanggal & Pekerja<span v-if="labelPeriodeFilter || filter.worker" class="text-blue-600 font-normal"> — {{ labelPeriodeFilter }} {{ filter.worker ? '('+filter.worker+')' : '' }}</span></span>
+        <span class="text-gray-400 text-[11px]">{{ showFilter ? '▲ Sembunyikan' : '▼ Tampilkan' }}</span>
+      </button>
+      <div v-show="showFilter" class="p-4 pt-0 border-t">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-3">
+          <input type="date" v-model="filter.startDate" class="border rounded-lg px-3 py-1.5 text-xs">
+          <input type="date" v-model="filter.endDate" class="border rounded-lg px-3 py-1.5 text-xs">
+          <select v-model="filter.worker" class="border rounded-lg px-3 py-1.5 text-xs">
+            <option value="">Semua Pekerja</option>
+            <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
+          </select>
+          <div class="flex gap-2">
+            <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium">Terapkan</button>
+            <button @click="resetFilter" class="px-3 py-1.5 border rounded-lg text-xs">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- TAB 2: FORM TRANSAKSI -->
-  <div v-if="activeTab === 'input'" class="bg-white p-4 rounded-xl shadow-sm border">
+  <!-- ===================== TAB: INPUT TRANSAKSI ===================== -->
+  <div v-show="activeTab === 'input'" class="bg-white p-4 rounded-xl shadow-sm border">
     <div class="flex justify-between items-center mb-3">
       <span class="text-xs font-bold text-gray-700">{{ isEditing ? 'Edit Transaksi' : 'Catat Transaksi Baru' }}</span>
     </div>
@@ -171,24 +162,8 @@
     </form>
   </div>
 
-  <!-- TAB 3: SETORAN KORLAP/TEKNISI (CARD) -->
-  <div v-if="activeTab === 'setoran'" class="space-y-6">
-    <!-- FILTER SETORAN -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border space-y-3">
-      <span class="text-xs font-bold text-gray-700">Filter Setoran Pekerja</span>
-      <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
-        <input type="date" v-model="filter.startDate" class="border rounded-lg px-3 py-1.5 text-xs">
-        <input type="date" v-model="filter.endDate" class="border rounded-lg px-3 py-1.5 text-xs">
-        <select v-model="filter.worker" class="border rounded-lg px-3 py-1.5 text-xs">
-          <option value="">Semua Pekerja</option>
-          <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
-        </select>
-        <div class="flex gap-2">
-          <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium">Terapkan</button>
-          <button @click="resetFilter" class="px-3 py-1.5 border rounded-lg text-xs">Reset</button>
-        </div>
-      </div>
-    </div>
+  <!-- ===================== TAB: SETORAN TEKNISI (Korlap + Teknisi) ===================== -->
+  <div v-show="activeTab === 'setoran'" class="space-y-6">
 
     <!-- REKAP KORLAP -->
     <div class="space-y-3">
@@ -222,7 +197,7 @@
               <span :class="k.setoranSebelumnya >= 0 ? 'text-green-600' : 'text-red-600'">{{ formatRupiah(k.setoranSebelumnya) }}</span>
             </div>
             <hr class="my-1">
-            
+
             <div class="flex justify-between items-center font-bold text-sm my-2">
               <span>Total Setoran Akhir</span>
               <div class="flex items-center gap-1">
@@ -329,26 +304,9 @@
     </div>
   </div>
 
-  <!-- TAB 4: DAFTAR TRANSAKSI -->
-  <div v-if="activeTab === 'daftar'" class="bg-white rounded-xl shadow-sm border p-4 space-y-3">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-      <h2 class="text-sm font-bold text-gray-700">Daftar Transaksi (Terbaru di Atas)</h2>
-    </div>
-
-    <!-- FILTER DAFTAR TRANSAKSI -->
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t">
-      <input type="date" v-model="filter.startDate" class="border rounded-lg px-3 py-1.5 text-xs">
-      <input type="date" v-model="filter.endDate" class="border rounded-lg px-3 py-1.5 text-xs">
-      <select v-model="filter.worker" class="border rounded-lg px-3 py-1.5 text-xs">
-        <option value="">Semua Pekerja</option>
-        <option v-for="w in workers" :key="w.nama" :value="w.nama">{{ w.nama }} ({{ w.peran }})</option>
-      </select>
-      <div class="flex gap-2">
-        <button @click="loadData" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium">Terapkan Filter</button>
-        <button @click="resetFilter" class="px-3 py-1.5 border rounded-lg text-xs">Reset</button>
-      </div>
-    </div>
-
+  <!-- ===================== TAB: DAFTAR TRANSAKSI ===================== -->
+  <div v-show="activeTab === 'daftar'" class="bg-white rounded-xl shadow-sm border p-4">
+    <h2 class="text-sm font-bold text-gray-700 mb-3">Daftar Transaksi</h2>
     <div class="overflow-x-auto">
       <table class="w-full text-xs text-left">
         <thead>
@@ -384,48 +342,41 @@
     </div>
   </div>
 
-  <!-- TAB 5: BONUS THR -->
-  <div v-if="activeTab === 'thr'" class="space-y-4">
+  <!-- ===================== TAB: BONUS THR ===================== -->
+  <div v-show="activeTab === 'thr'" class="space-y-4">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div class="bg-white p-4 rounded-xl shadow-sm border">
-        <p class="text-xs text-gray-500">Total Unit Pekerjaan (Job)</p>
-        <p class="text-lg font-bold text-gray-800">{{ summaryThr.totalJob }} Job</p>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm border bg-purple-50/30">
-        <p class="text-xs text-purple-700 font-medium">Grand Total Rekap Bonus THR</p>
-        <p class="text-lg font-bold text-purple-600">{{ formatRupiah(summaryThr.grandTotalThr) }}</p>
+      <div class="bg-white p-4 rounded-xl shadow-sm border bg-pink-50/40">
+        <p class="text-xs text-pink-700 font-medium">Total Bonus THR</p>
+        <p class="text-lg font-bold text-pink-600">{{ formatRupiah(totalBonusThr) }}</p>
       </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border p-4 space-y-3">
-      <h2 class="text-sm font-bold text-gray-700">Rekap Bonus THR Seluruh Korlap / Teknisi</h2>
-      <p class="text-xs text-gray-500">Bonus THR dihitung dari total pengerjaan sebagai Teknisi (x Rp 2.000) ditambah Input THR Sebelum Aplikasi.</p>
-      
+    <div class="bg-white rounded-xl shadow-sm border p-4">
+      <h2 class="text-sm font-bold text-gray-700 mb-1">Rekap Bonus THR Setiap Pekerja</h2>
+      <p class="text-[11px] text-gray-400 mb-3">Dihitung otomatis Rp 2.000 per transaksi pada kolom Teknisi. "Bonus Awal" adalah THR yang sudah terkumpul sebelum memakai aplikasi ini — isi/edit manual lewat tombol di bawah.</p>
       <div class="overflow-x-auto">
         <table class="w-full text-xs text-left">
           <thead>
             <tr class="border-b text-gray-400">
-              <th class="py-2 pr-2">Nama Pekerja</th>
+              <th class="py-2 pr-2">Nama</th>
               <th class="py-2 pr-2">Peran</th>
-              <th class="py-2 pr-2 text-center">Jumlah Job (Teknisi)</th>
-              <th class="py-2 pr-2 text-right">THR Aplikasi (Job x 2.000)</th>
-              <th class="py-2 pr-2 text-right">THR Sebelum Aplikasi</th>
+              <th class="py-2 pr-2 text-right">Jml Transaksi</th>
+              <th class="py-2 pr-2 text-right">Bonus dari Transaksi</th>
+              <th class="py-2 pr-2 text-right">Bonus Awal</th>
               <th class="py-2 pr-2 text-right">Total Bonus THR</th>
               <th class="py-2 pr-2 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in rekapThr" :key="item.nama" class="border-b hover:bg-gray-50">
-              <td class="py-2 pr-2 font-bold text-gray-800">{{ item.nama }}</td>
-              <td class="py-2 pr-2">{{ item.peran }}</td>
-              <td class="py-2 pr-2 text-center font-medium">{{ item.jumlahJob }}</td>
-              <td class="py-2 pr-2 text-right font-medium text-blue-600">{{ formatRupiah(item.thrAplikasi) }}</td>
-              <td class="py-2 pr-2 text-right font-medium text-amber-600">{{ formatRupiah(item.thrSebelumnya) }}</td>
-              <td class="py-2 pr-2 text-right font-bold text-purple-700">{{ formatRupiah(item.totalThr) }}</td>
+            <tr v-for="r in rekapThr" :key="r.nama" class="border-b hover:bg-gray-50">
+              <td class="py-2 pr-2 font-medium">{{ r.nama }}</td>
+              <td class="py-2 pr-2">{{ r.peran }}</td>
+              <td class="py-2 pr-2 text-right">{{ r.jumlahTransaksi }}</td>
+              <td class="py-2 pr-2 text-right">{{ formatRupiah(r.bonusDariTransaksi) }}</td>
+              <td class="py-2 pr-2 text-right text-blue-600">{{ formatRupiah(r.bonusAwal) }}</td>
+              <td class="py-2 pr-2 text-right font-bold text-pink-600">{{ formatRupiah(r.totalBonusThr) }}</td>
               <td class="py-2 pr-2 text-center whitespace-nowrap">
-                <button @click="editThrSebelumnya(item)" class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded hover:bg-amber-100">
-                  ✏️ Edit THR Sebelumnya
-                </button>
+                <button @click="editBonusAwal(r)" class="text-amber-600 hover:underline">✏️ Edit Awal</button>
               </td>
             </tr>
           </tbody>
@@ -437,7 +388,7 @@
   <!-- FOOTER -->
   <footer class="text-center pt-4 border-t text-gray-400 text-[11px] flex justify-between items-center">
     <span>Aplikasi Keuangan Operasional</span>
-    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v16</span>
+    <span class="font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-[10px]">v17</span>
   </footer>
 
   <!-- MODAL KONEKSI -->
@@ -471,8 +422,8 @@
           <input type="number" v-model.number="workerForm.setoranAwal" placeholder="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
         </div>
         <div>
-          <label class="text-[10px] text-gray-400 block">Bonus THR Sebelum Aplikasi (Rp)</label>
-          <input type="number" v-model.number="workerForm.thrSebelumnya" placeholder="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
+          <label class="text-[10px] text-gray-400 block">Bonus THR Awal (opsional, sebelum pakai app ini)</label>
+          <input type="number" v-model.number="workerForm.bonusThrAwal" placeholder="0" class="w-full border rounded-lg px-3 py-1.5 text-xs">
         </div>
         <button type="submit" class="w-full bg-green-600 text-white rounded-lg py-2 text-xs font-medium">Tambah Pekerja</button>
       </form>
@@ -496,24 +447,33 @@ createApp({
       scriptUrl: (localStorage.getItem('apps_script_url') || DEFAULT_SCRIPT_URL).trim(),
       tempUrl: '',
       connectionStatus: 'offline',
-      activeTab: 'ringkasan',
       showConfig: false,
       showSettings: false,
+      showFilter: false,
       isEditing: false,
       saving: false,
       toast: { show: false, message: '', type: 'success' },
 
+      activeTab: 'ringkasan',
+      tabs: [
+        { id: 'ringkasan', label: '📊 Ringkasan' },
+        { id: 'input', label: '➕ Input Transaksi' },
+        { id: 'setoran', label: '💰 Setoran Teknisi' },
+        { id: 'daftar', label: '📋 Daftar Transaksi' },
+        { id: 'thr', label: '🎁 Bonus THR' }
+      ],
+
       filter: { startDate: '', endDate: '', worker: '' },
       form: { id: null, tanggal: new Date().toISOString().slice(0,10), jenisOmset: 'Teknisi', korlap: '', teknisi: '', omset: 0, transfer: 0, diskon: 0 },
-      workerForm: { nama: '', peran: 'Korlap', korlapInduk: '', setoranAwal: 0, thrSebelumnya: 0 },
+      workerForm: { nama: '', peran: 'Korlap', korlapInduk: '', setoranAwal: 0, bonusThrAwal: 0 },
 
       transactions: [],
       workers: [],
-      summary: { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0 },
+      summary: { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0, profitPerusahaanPeriode: 0 },
       rekapKorlap: [],
       rekapTeknisi: [],
       rekapThr: [],
-      summaryThr: { totalJob: 0, grandTotalThr: 0 }
+      totalBonusThr: 0
     };
   },
   computed: {
@@ -548,9 +508,9 @@ createApp({
   },
   methods: {
     checkConnection() {
-      if (!this.scriptUrl || this.scriptUrl === 'PASTE_URL_APPS_SCRIPT_BARU_ANDA_DI_SINI') { 
-        this.connectionStatus = 'offline'; 
-        return; 
+      if (!this.scriptUrl || this.scriptUrl === 'PASTE_URL_APPS_SCRIPT_BARU_ANDA_DI_SINI') {
+        this.connectionStatus = 'offline';
+        return;
       }
       this.connectionStatus = 'checking';
       this.apiGet('getWorkers')
@@ -578,14 +538,11 @@ createApp({
     prosesBayar(worker) {
       let dibayar = Number(worker.sudahDibayar) || 0;
       const totalAkhirSaatIni = Number(worker.totalSetoranAkhir) || 0;
-
       const sisaBaru = totalAkhirSaatIni - dibayar;
-      const resetKomisi = worker.peran === 'Korlap' ? true : false;
 
-      this.apiPost('updateWorkerBalance', { 
-        nama: worker.nama, 
+      this.apiPost('updateWorkerBalance', {
+        nama: worker.nama,
         setoranSebelumnya: sisaBaru,
-        resetKomisi: resetKomisi,
         dibayar: dibayar
       })
       .then(res => {
@@ -622,7 +579,7 @@ createApp({
     editTotalSetoranAkhir(worker) {
       const nilaiLama = Number(worker.totalSetoranAkhir) || 0;
       const inputBaru = prompt(`Edit Total Setoran Akhir untuk ${worker.nama}:`, nilaiLama);
-      
+
       if (inputBaru === null || inputBaru.trim() === '') return;
 
       const totalAkhirBaru = Number(inputBaru);
@@ -630,13 +587,13 @@ createApp({
         this.showToast('Nominal harus berupa angka', 'error');
         return;
       }
-      
+
       const setoranPeriodeIni = Number(worker.totalSetoranPeriodeIni) || 0;
       const setoranSebelumnyaBaru = totalAkhirBaru - setoranPeriodeIni;
 
-      this.apiPost('updateWorkerBalance', { 
-        nama: worker.nama, 
-        setoranSebelumnya: setoranSebelumnyaBaru 
+      this.apiPost('overrideSetoranSebelumnya', {
+        nama: worker.nama,
+        nilaiBaru: setoranSebelumnyaBaru
       })
       .then(res => {
         if (res && res.error) {
@@ -651,8 +608,10 @@ createApp({
       });
     },
 
-    editThrSebelumnya(item) {
-      const inputBaru = prompt(`Input THR Sebelum Aplikasi untuk ${item.nama}:`, item.thrSebelumnya);
+    editBonusAwal(item) {
+      const nilaiLama = Number(item.bonusAwal) || 0;
+      const inputBaru = prompt(`Edit Bonus THR Awal (sebelum pakai app ini) untuk ${item.nama}:`, nilaiLama);
+
       if (inputBaru === null || inputBaru.trim() === '') return;
 
       const nilaiBaru = Number(inputBaru);
@@ -661,27 +620,25 @@ createApp({
         return;
       }
 
-      this.apiPost('saveInitialThr', {
-        nama: item.nama,
-        thrSebelumnya: nilaiBaru
-      })
+      this.apiPost('updateBonusThrAwal', { nama: item.nama, nilaiBaru: nilaiBaru })
       .then(res => {
         if (res && res.error) {
           this.showToast(res.error, 'error');
         } else {
-          this.showToast('Bonus THR Sebelumnya berhasil diubah!');
+          this.showToast('Bonus THR Awal berhasil diubah!');
           this.loadData();
         }
       })
       .catch(err => {
-        this.showToast('Gagal menyimpan THR sebelumnya: ' + err.message, 'error');
+        this.showToast('Gagal memperbarui nilai: ' + err.message, 'error');
       });
     },
 
+    // DIBUAT AMAN UNTUK SEMUA HP DENGAN TEXT/PLAIN & NO-CACHE
     apiGet(action, params = {}) {
       const cleanUrl = this.scriptUrl.trim();
       const qs = new URLSearchParams({ action, _t: Date.now(), ...params }).toString();
-      return fetch(`${cleanUrl}?${qs}`, { 
+      return fetch(`${cleanUrl}?${qs}`, {
         method: 'GET',
         cache: 'no-store',
         redirect: 'follow'
@@ -709,11 +666,11 @@ createApp({
         if (res && res.error) { this.showToast(res.error, 'error'); return; }
         this.transactions = res.transactions || [];
         this.workers = res.workers || [];
-        this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0 };
+        this.summary = res.summary || { totalOmset: 0, totalTransferMasuk: 0, totalOwnerShare: 0, totalSetoranAkhirAll: 0, profitPerusahaanPeriode: 0 };
         this.rekapKorlap = res.rekapKorlap || [];
         this.rekapTeknisi = res.rekapTeknisi || [];
         this.rekapThr = res.rekapThr || [];
-        this.summaryThr = res.summaryThr || { totalJob: 0, grandTotalThr: 0 };
+        this.totalBonusThr = res.totalBonusThr || 0;
         this.connectionStatus = 'online';
       }).catch(() => {
         this.connectionStatus = 'offline';
@@ -758,7 +715,7 @@ createApp({
       this.apiPost('saveWorker', { data: this.workerForm }).then(res => {
         if (res.error) { this.showToast(res.error, 'error'); return; }
         this.showToast('Pekerja ditambahkan');
-        this.workerForm = { nama: '', peran: 'Korlap', korlapInduk: '', setoranAwal: 0, thrSebelumnya: 0 };
+        this.workerForm = { nama: '', peran: 'Korlap', korlapInduk: '', setoranAwal: 0, bonusThrAwal: 0 };
         this.loadData();
       });
     },
@@ -766,12 +723,12 @@ createApp({
     exportCard(event) {
       const card = event.target.closest('.printable-card');
       if (!card) return;
-      
+
       const noExportElems = card.querySelectorAll('.no-export');
       noExportElems.forEach(el => el.style.display = 'none');
 
-      html2canvas(card, { 
-        backgroundColor: '#ffffff', 
+      html2canvas(card, {
+        backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
         logging: false
